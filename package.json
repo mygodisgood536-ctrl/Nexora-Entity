@@ -1,0 +1,69 @@
+{
+    "name":  "nexora-entity",
+    "version":  "1.0.0",
+    "private":  true,
+    "description":  "Nexora Entity ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â guided digital-identity and entity-readiness platform. Collects, connects, inspects, verifies and maintains a coherent public representation of a real person, then deploys a public Entity Website from the pre-designed Nexora Entity Website Design System.",
+    "license":  "UNLICENSED",
+    "engines":  {
+                    "node":  "\u003e=22"
+                },
+    "workspaces":  [
+                       "packages/core",
+                       "packages/db",
+                       "packages/opencode-bridge",
+                       "packages/inspect",
+                       "packages/engine",
+                       "packages/deploy",
+                       "packages/entity-site",
+                       "packages/web"
+                   ],
+    "scripts":  {
+                    "services":  "node scripts/ensure-services.mjs",
+                    "web:start":  "node scripts/start-web.mjs",
+                    "web:stop":  "node scripts/stop-web.mjs",
+                    "dev":  "node scripts/dev.mjs",
+                    "dev:web":  "npm run dev --workspace @nexora/web",
+                    "build":  "npm run build --workspace @nexora/web",
+                    "typecheck":  "tsc --noEmit -p tsconfig.json",
+                     "lint":  "node --max-old-space-size=3072 node_modules/eslint/bin/eslint.js .",
+                    "test":  "vitest run",
+                    "test:watch":  "vitest",
+                    "db:start":  "powershell -ExecutionPolicy Bypass -File scripts/pg-start.ps1",
+                    "db:stop":  "powershell -ExecutionPolicy Bypass -File scripts/pg-stop.ps1",
+                    "db:provision":  "node scripts/provision-db.mjs",
+                    "db:migrate":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node --import tsx scripts/migrate.ts",
+                    "db:status":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node --import tsx scripts/db-status.ts",
+                    "db:connections":  "node --import tsx scripts/db-connections.ts",
+                    "opencode:install":  "node scripts/install-opencode.mjs",
+                    "check:sha256":  "node --import tsx scripts/verify-sha256.ts",
+                    "check:readme":  "node --import tsx scripts/check-readme.ts",
+                    "smoke":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node scripts/start-web.mjs \u0026\u0026 node --import tsx scripts/smoke-http.ts",
+                    "check:bridge":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node --import tsx scripts/check-bridge.ts",
+                    "check:inspect":  "node --import tsx scripts/check-inspect.ts",
+                    "check:site":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node --import tsx scripts/check-site.ts",
+                    "e2e:engine":  "node scripts/ensure-services.mjs --quiet \u0026\u0026 node --import tsx scripts/e2e-engine.ts",
+                    "ui:audit":  "node scripts/ui-audit.mjs",
+                    "verify":  "npm run lint \u0026\u0026 npm run typecheck \u0026\u0026 npm run test \u0026\u0026 npm run build \u0026\u0026 npm run smoke"
+                },
+    "allowScripts":  {
+                         "esbuild":  true,
+                         "sharp":  true,
+                         "opencode-ai":  true,
+                         "unrs-resolver":  true
+                     },
+    "devDependencies":  {
+                            "@eslint/js":  "^9.39.1",
+                            "@types/node":  "^24.10.1",
+                            "@types/pg":  "^8.15.6",
+                            "@types/react":  "^19.3.0",
+                            "@types/react-dom":  "^19.3.0",
+                            "@vitest/coverage-v8":  "^3.2.4",
+                            "eslint":  "^9.39.1",
+                            "eslint-plugin-react-hooks":  "^7.1.0",
+                            "playwright":  "^1.63.0",
+                            "tsx":  "^4.23.15",
+                            "typescript":  "~5.9.3",
+                            "typescript-eslint":  "^8.48.0",
+                            "vitest":  "^3.2.4"
+                        }
+}

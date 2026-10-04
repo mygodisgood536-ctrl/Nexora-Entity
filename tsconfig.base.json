@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": false,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@nexora/core": ["./packages/core/src/index.ts"],
+      "@nexora/core/*": ["./packages/core/src/*"],
+      "@nexora/db": ["./packages/db/src/index.ts"],
+      "@nexora/db/*": ["./packages/db/src/*"],
+      "@nexora/opencode-bridge": ["./packages/opencode-bridge/src/index.ts"],
+      "@nexora/opencode-bridge/*": ["./packages/opencode-bridge/src/*"],
+      "@nexora/inspect": ["./packages/inspect/src/index.ts"],
+      "@nexora/inspect/*": ["./packages/inspect/src/*"],
+      "@nexora/engine": ["./packages/engine/src/index.ts"],
+      "@nexora/engine/*": ["./packages/engine/src/*"],
+      "@nexora/deploy": ["./packages/deploy/src/index.ts"],
+      "@nexora/deploy/*": ["./packages/deploy/src/*"],
+      "@nexora/entity-site": ["./packages/entity-site/src/index.ts"],
+      "@nexora/entity-site/*": ["./packages/entity-site/src/*"]
+    }
+  }
+}

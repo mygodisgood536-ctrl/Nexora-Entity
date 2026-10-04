@@ -1,0 +1,24 @@
+{
+  "name": "@nexora/entity-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./compose": "./src/compose.ts",
+    "./components": "./src/components.tsx",
+    "./meta": "./src/meta.ts",
+    "./render": "./src/render.tsx",
+    "./design-system.css": "./src/design-system.css"
+  },
+  "dependencies": {
+    "@nexora/core": "*"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

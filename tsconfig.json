@@ -1,0 +1,41 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": false,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./packages/web/src/*"],
+      "@nexora/core": ["./packages/core/src/index.ts"],
+      "@nexora/core/*": ["./packages/core/src/*"],
+      "@nexora/db": ["./packages/db/src/index.ts"],
+      "@nexora/db/*": ["./packages/db/src/*"],
+      "@nexora/opencode-bridge": ["./packages/opencode-bridge/src/index.ts"],
+      "@nexora/opencode-bridge/*": ["./packages/opencode-bridge/src/*"],
+      "@nexora/inspect": ["./packages/inspect/src/index.ts"],
+      "@nexora/inspect/*": ["./packages/inspect/src/*"],
+      "@nexora/engine": ["./packages/engine/src/index.ts"],
+      "@nexora/engine/*": ["./packages/engine/src/*"],
+      "@nexora/deploy": ["./packages/deploy/src/index.ts"],
+      "@nexora/deploy/*": ["./packages/deploy/src/*"],
+      "@nexora/entity-site": ["./packages/entity-site/src/index.ts"],
+      "@nexora/entity-site/*": ["./packages/entity-site/src/*"]
+    }
+  },
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/db/src/**/*.ts",
+    "packages/opencode-bridge/src/**/*.ts",
+    "packages/inspect/src/**/*.ts",
+    "packages/engine/src/**/*.ts",
+    "packages/entity-site/src/**/*.ts",
+    "packages/entity-site/src/**/*.tsx",
+    "packages/deploy/src/**/*.ts",
+    "packages/web/src/**/*.ts",
+    "packages/web/src/**/*.tsx",
+    "scripts/**/*.ts",
+    "scripts/**/*.mjs"
+  ],
+  "exclude": ["node_modules", "**/node_modules", "**/.next", "**/dist", "**/.pg", "storage"]
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>http://linus-torvalds-4.nexoraentity.com</loc>
+    <lastmod>2026-10-01T17:00:29.345Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>http://127.0.0.1:4311/media/photos/linus-torvalds-4-1-deb90c2aeca6.jpg</image:loc>
+      <image:title>Photograph of linus torvalds 4</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>http://127.0.0.1:4311/media/photos/linus-torvalds-4-2-6baee26511db.jpg</image:loc>
+      <image:title>Photograph of linus torvalds 4</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>http://127.0.0.1:4311/media/photos/linus-torvalds-4-3-074210f4eb67.jpg</image:loc>
+      <image:title>Photograph of linus torvalds 4</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>http://127.0.0.1:4311/media/photos/linus-torvalds-4-4-d0cd4f5b4759.jpg</image:loc>
+      <image:title>Photograph of linus torvalds 4</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>http://127.0.0.1:4311/media/photos/linus-torvalds-4-5-c570ba744989.jpg</image:loc>
+      <image:title>Photograph of linus torvalds 4</image:title>
+    </image:image>
+  </url>
+</urlset>
