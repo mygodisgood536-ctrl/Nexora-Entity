@@ -44,7 +44,8 @@
         "e2e:engine": "node scripts/ensure-services.mjs --quiet && node --import tsx scripts/e2e-engine.ts",
         "ui:audit": "node scripts/ui-audit.mjs",
         "verify": "npm run lint && npm run typecheck && npm run test && npm run build && npm run web:start && npm run smoke:public",
-        "smoke:public": "node scripts/smoke-public.mjs"
+        "smoke:public": "node scripts/smoke-public.mjs",
+        "design:audit": "node scripts/design-audit.mjs"
     },
     "allowScripts": {
         "esbuild": true,

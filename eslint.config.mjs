@@ -87,10 +87,10 @@ export default tseslint.config(
     },
   },
   {
-    // `scripts/ui-audit.mjs` mixes Node (Playwright driver) with functions that are serialised
-    // and evaluated inside the page by `page.evaluate(...)`. Those bodies legitimately touch
-    // browser globals from a Node file, so both sets are declared here.
-    files: ['scripts/ui-audit.mjs'],
+    // Scripts that drive a browser from Node. Functions passed to `page.evaluate(...)` are
+    // serialised and run inside the page, so they legitimately touch `document`,
+    // `getComputedStyle` and friends from a Node file. Both sets are therefore declared here.
+    files: ['scripts/ui-audit.mjs', 'scripts/design-audit.mjs'],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
     },

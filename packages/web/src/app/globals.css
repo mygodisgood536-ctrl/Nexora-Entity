@@ -11,7 +11,11 @@
   --color-ink-700: #1d2732;
   --color-ink-600: #2c3946;
   --color-ink-500: #47576a;
-  --color-ink-400: #6b7c90;
+  /* Was #6b7c90, which measured 4.28:1 on white and failed WCAG AA (4.5:1) for the muted text
+     colour used by .nx-eyebrow, .nx-help and secondary links. #5c6e83 measures 5.23:1 on
+     white, 5.05:1 on paper-alt and 4.78:1 on ink-50, so it is safe on every surface it is used
+     on while remaining a muted tone rather than body-ink. */
+  --color-ink-400: #5c6e83;
   --color-ink-300: #94a3b5;
   --color-ink-200: #c3ccd8;
   --color-ink-100: #e2e8f0;
@@ -242,6 +246,16 @@ body {
 .nx-btn--sm {
   padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
+}
+
+/* Compact buttons measure 30px tall. That clears WCAG 2.2 AA (24px minimum) but is tight under a
+   thumb, so on real touch devices they are given a 44px target. The dense desktop layout is
+   unaffected because this only applies to coarse pointers. */
+@media (pointer: coarse) {
+  .nx-btn--sm {
+    min-height: 2.75rem;
+    padding-block: 0.5rem;
+  }
 }
 
 .nx-field {

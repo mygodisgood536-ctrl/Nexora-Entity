@@ -158,11 +158,14 @@ export default function HomePage() {
           <span>
             {PRODUCT_NAME} — {PRODUCT_TAGLINE}
           </span>
-          <div className="flex flex-wrap gap-4">
-            <Link href="/login" className="hover:text-ink-700">
+          <div className="flex flex-wrap gap-1 sm:gap-4">
+            {/* These are text links inside small print, which measured 16px tall and were too
+                small to tap reliably on a phone. Negative inline margin keeps the visual rhythm
+                of the gap-4 container while the padding gives the link a real touch target. */}
+            <Link href="/login" className="-mx-1 rounded px-1 py-2 hover:text-ink-700">
               Sign in
             </Link>
-            <Link href="/signup" className="hover:text-ink-700">
+            <Link href="/signup" className="-mx-1 rounded px-1 py-2 hover:text-ink-700">
               Create account
             </Link>
           </div>
