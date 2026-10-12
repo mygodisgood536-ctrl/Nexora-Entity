@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev --port 4311",
     "build": "next build",
+    "postbuild": "node ../../scripts/copy-standalone-assets.mjs",
     "start": "next start --port 4311",
     "typecheck": "tsc --noEmit -p ../../tsconfig.json"
   },
@@ -19,7 +20,8 @@
     "@nexora/opencode-bridge": "*",
     "next": "^16.3.8",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

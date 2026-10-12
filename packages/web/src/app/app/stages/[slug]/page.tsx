@@ -9,6 +9,17 @@ import LivePreview from '@/components/live-preview';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The guided stage workbench.
+ *
+ * URL contract: `/app/stages/<stageKey>?entity=<entityId>`.
+ *
+ * The path segment is the *stage*, because that is what every producer of these links means:
+ * the readiness engine emits `/app/stages/N_websites`, the entity-creation redirect emits
+ * `/app/stages/A_identity`, and the dashboard's evidence cards emit the same. The entity is
+ * carried separately in `?entity=` and is always ownership-checked, so a guessed entity id in
+ * the query string can never reach another person's data.
+ */
 export default async function StagePage({
   params,
   searchParams,
@@ -20,22 +31,32 @@ export default async function StagePage({
   const routeParams = await params;
   const query = await searchParams;
 
-  const slugParam = Array.isArray(routeParams['slug']) ? routeParams['slug'][0] : routeParams['slug'];
-  if (!slugParam) notFound();
+  const rawSlug = Array.isArray(routeParams['slug']) ? routeParams['slug'][0] : routeParams['slug'];
+  if (!rawSlug) notFound();
 
-  const entities = await listEntitiesForUser(user.id);
-  const entity =
-    entities.find((e) => e.slug === slugParam || e.id === slugParam || e.canonical_path === slugParam) ?? entities[0];
-  if (!entity) notFound();
-
-  const stageKey = Array.isArray(query['stage']) ? query['stage'][0] : (query['stage'] as StageKey | undefined);
-  const activeStage: StageKey = stageKey && stageKey in STAGE_BY_KEY ? (stageKey as StageKey) : 'A_identity';
+  // The path segment names the stage. An unknown or missing stage falls back to the first stage
+  // rather than 404ing, so a stale bookmark still lands somewhere useful.
+  const stageFromPath = STAGE_BY_KEY[rawSlug as StageKey] ? (rawSlug as StageKey) : null;
+  const stageFromQuery = typeof query['stage'] === 'string' ? (query['stage'] as StageKey) : null;
+  const activeStage: StageKey =
+    stageFromPath ?? (stageFromQuery && stageFromQuery in STAGE_BY_KEY ? stageFromQuery : 'A_identity');
   const stage = STAGE_BY_KEY[activeStage];
+
+  // Resolve the entity. `?entity=` is preferred and is ownership-checked; without it we fall
+  // back to this account's most recent entity. We never 404 here, because the stage is the
+  // thing being viewed and the entity list may legitimately be re-ordered.
+  const entities = await listEntitiesForUser(user.id);
+  if (entities.length === 0) notFound();
+
+  const requestedEntityId = typeof query['entity'] === 'string' ? query['entity'] : null;
+  const entity = requestedEntityId ? await findEntityForUser(requestedEntityId, user.id) : entities[0];
+  if (!entity) notFound();
 
   const [progress, aiConfig] = await Promise.all([listStageProgress(entity.id), getActiveAiConfiguration(user.id)]);
   const current = progress.find((p) => p.stage_key === activeStage);
 
   const openProvider = query['openProvider'] === '1' || !aiConfig;
+  const stageHref = (key: StageKey) => `/app/stages/${key}?entity=${entity.id}`;
 
   return (
     <>
@@ -48,10 +69,11 @@ export default async function StagePage({
             return (
               <Link
                 key={s.key}
-                href={`/app/stages/${s.key}?entity=${entity.id}`}
+                href={stageHref(s.key)}
                 className="nx-rail__item"
                 data-status={status}
                 data-active={isActive}
+                aria-current={isActive ? 'page' : undefined}
               >
                 <span className="nx-rail__letter">{s.letter}</span>
                 <span className="min-w-0 truncate">{s.title}</span>

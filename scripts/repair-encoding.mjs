@@ -120,7 +120,7 @@ function walk(dir) {
     }
     if (!EXT.has(path.extname(e.name))) continue;
     const original = readFileSync(full, 'utf8');
-    if (!/[^\u0000-\u007F]/.test(original)) continue;
+    if (!/[^\p{ASCII}]/u.test(original)) continue;
     const { out, changed } = repairText(original);
     if (DEBUG) console.log(`  scanned ${path.relative(path.resolve(here, '..'), full)} changed=${changed}`);
     if (changed > 0) {
@@ -135,7 +135,6 @@ if (DEBUG) {
   console.log(`roots: ${roots.join(', ')}`);
   console.log(`high class length: ${HIGH_CLASS.length}`);
   try {
-    // eslint-disable-next-line no-new
     new RegExp(`[${HIGH_CLASS}]+`, 'g');
     console.log('regex ok');
   } catch (e) {

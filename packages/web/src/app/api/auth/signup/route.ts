@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { UserDataError } from '@nexora/core';
 import { usernameAvailable } from '@nexora/db';
-import { signup, startSession } from '@/lib/auth';
+import { signup } from '@/lib/auth';
 import { requestMetaAsync } from '@/lib/server';
 
 export const runtime = 'nodejs';
@@ -54,11 +54,9 @@ export async function POST(request: Request) {
 
   try {
     const meta = await requestMetaAsync();
-    const { userId } = await signup(parsed.data, meta);
-    // Spec §4: after signup the user must log in. Start a session so the next screen is the
-    // login form pre-authenticated is NOT done; the user is sent to /login explicitly.
-    void startSession;
-    void userId;
+    // Spec §4: after signup the person must log in. No session is created here; the
+    // server owns the destination URL so `next` and `justRegistered` are encoded once.
+    await signup(parsed.data, meta);
     return NextResponse.json({ ok: true, next: '/login?next=%2Fapp&justRegistered=1' });
   } catch (err) {
     const { toActionableError } = await import('@nexora/core');

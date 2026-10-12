@@ -438,7 +438,6 @@ export async function resolvePublicUrl(entityId: string, target: DeploymentTarge
 
   if (target === DeploymentTarget.vercel && vercelAvailable()) {
     const project = `nexora-entity-${entity.slug}`;
-    const team = cfg.vercelTeamId;
     return `https://${project}.vercel.app`;
   }
 

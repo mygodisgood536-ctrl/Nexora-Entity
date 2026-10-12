@@ -6,8 +6,6 @@
  * public identities. These helpers produce comparable tokens for the identity engine.
  */
 
-import { sha256Hex } from './sha256';
-
 const DIACRITIC = /[\u0300-\u036f]/g;
 const NON_ALNUM = /[^a-z0-9\s]/g;
 

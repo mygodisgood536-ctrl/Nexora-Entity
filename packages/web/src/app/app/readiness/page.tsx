@@ -1,11 +1,7 @@
 import Link from 'next/link';
 import { EVIDENCE_MINIMUMS_NOTICE, READINESS_DISCLAIMER } from '@nexora/core';
 import {
-  countCorrectionsSince,
-  createReadinessRun,
-  finishReadinessRun,
   findEntityForUser,
-  latestCompletedRun,
   listReadinessRuns,
 } from '@nexora/db';
 import { buildReadinessReport } from '@nexora/engine';
@@ -39,33 +35,16 @@ export default async function ReadinessPage({
     );
   }
 
-  // The complete whole-entity second pass runs here, and its result is what is shown. Reading
-  // the previous run first is what lets the report say how much changed since it.
-  const previous = await latestCompletedRun(entity.id);
+  // The complete whole-entity second pass runs here, and its result is what is shown.
+  //
+  // This page deliberately does NOT persist a run row. It used to create and finish a
+  // `readiness_runs` row on every render, which meant simply viewing the page wrote to the audit
+  // trail — and because the "Re-check sources" button posts to /api/readiness/run (a second run)
+  // and then reloads (a third), every click left three rows behind. Recording a review is an
+  // explicit action performed by /api/readiness/run; this route only computes the current
+  // picture for display.
   const report = await buildReadinessReport(entity.id, 'second_pass');
 
-  // Persist this run so there is a durable audit trail of every review performed.
-  const run = await createReadinessRun({
-    entityId: entity.id,
-    kind: 'second_pass',
-    parentRunId: previous?.id ?? null,
-    correctionsSinceParent: await countCorrectionsSince(
-      entity.id,
-      previous ? new Date(previous.finished_at ?? previous.started_at).toISOString() : null,
-    ),
-  });
-  await finishReadinessRun({
-    runId: run.id,
-    status: report.status,
-    score: report.score,
-    checks: report.checks,
-    blockingIssues: report.blockingIssues,
-    warnings: report.warnings,
-    secondPassAnswers: report.secondPassAnswers,
-    summary: report.summary,
-  });
-
-  // Read after the run is written, so the history table includes the review just performed.
   const history = await listReadinessRuns(entity.id, 8);
 
   const ready = report.status === 'ready';

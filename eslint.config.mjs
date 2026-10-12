@@ -8,6 +8,7 @@
  * handling, unused code, and the React hooks rules that prevent stale-closure UI defects.
  */
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
@@ -44,12 +45,19 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      // Types are checked by tsc; these duplicates add cost without adding safety.
-      '@typescript-eslint/no-unused-vars': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
       eqeqeq: ['error', 'smart'],
       'prefer-const': 'error',
       'no-var': 'error',
+      /**
+       * `set-state-in-effect` is a React Compiler heuristic. It cannot tell a synchronous
+       * setState that causes a cascading render apart from an async fetch whose first await
+       * follows the setState call — which is what "load the provider catalogue when the panel
+       * opens" looks like. React's own guidance permits data fetching in effects. It is therefore
+       * reported as a warning rather than an error, so a genuine regression is still visible in
+       * lint output without failing the build on a known false positive.
+       */
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
   {
@@ -64,10 +72,27 @@ export default tseslint.config(
     },
   },
   {
-    // Server-side Node scripts and config: no DOM globals.
+    // Server-side Node scripts and config: Node globals, no DOM.
     files: ['scripts/**/*.mjs', 'scripts/**/*.ts', '**/*.config.*', 'eslint.config.mjs'],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly', Buffer: 'readonly', __dirname: 'readonly' },
+      globals: { ...globals.node },
+    },
+  },
+  {
+    // The Next.js application and the public-site renderer run in a browser-capable runtime.
+    // Without this, `document`, `window` and `getComputedStyle` read as undefined everywhere.
+    files: ['packages/web/**/*.{ts,tsx}', 'packages/entity-site/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+  },
+  {
+    // `scripts/ui-audit.mjs` mixes Node (Playwright driver) with functions that are serialised
+    // and evaluated inside the page by `page.evaluate(...)`. Those bodies legitimately touch
+    // browser globals from a Node file, so both sets are declared here.
+    files: ['scripts/ui-audit.mjs'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 );

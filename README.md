@@ -49,31 +49,77 @@ is held on `globalThis` so there is exactly one per process.
 
 ## Getting started
 
-Requirements: Node 24+, and a bundled PostgreSQL 16 (already provisioned in `.pg/`).
+Requirements: Node 24+. **PostgreSQL and OpenCode are both optional for the checks below** — see
+[Current integration status](#current-integration-status).
 
 ```bash
-npm install
-npm run services      # start PostgreSQL and the local OpenCode server
-npm run db:status     # confirm 24 tables and 4 migrations
-npm run build         # build the Next.js platform
-npm run web:start     # serve it on http://127.0.0.1:4311
+npm install          # see "Installing without OpenCode" below if you must not install it
+npm run build        # build the Next.js platform
+npm run web:start    # serve it on http://127.0.0.1:4311
+npm run smoke:public # verify the routes that need no database
+npm run web:stop
+```
+
+With PostgreSQL installed and running:
+
+```bash
+npm run db:provision   # create the role and databases (local only)
+npm run db:migrate     # apply the 4 migrations
+npm run db:status      # confirm 24 tables and 4 migrations
+npm run smoke          # full end-to-end HTTP journey, including the database
 ```
 
 Useful commands:
 
 ```bash
-npm run dev           # development server
+npm run dev           # development server (Next.js, attached to the terminal)
 npm run typecheck     # TypeScript across every package
-npm run test          # unit tests
-npm run smoke         # real HTTP end-to-end test against the running platform
-npm run verify        # typecheck + test + build + smoke
+npm run lint          # ESLint
+npm run test          # unit tests (vitest)
+npm run verify        # lint + typecheck + test + build + database-free runtime smoke
 npm run check:site    # render the public design system and validate the artefact
 npm run e2e:engine    # real inspection and readiness run against live sources
-npm run web:stop      # stop the platform and release the build directory
+npm run ui:audit      # browser audit: overflow, contrast, focus order, screenshots
 ```
 
-`npm run services` is safe to run repeatedly. It never restarts a healthy database, which matters
-because re-registering a running scheduled task would force a crash-recovery cycle.
+### Installing without OpenCode
+
+`opencode-ai` is an **optional dependency**, because the AI bridge is optional. To install
+everything else and leave OpenCode out:
+
+```bash
+npm install --omit=optional
+```
+
+This omits OpenCode's runtime **and** the platform-native binaries that are also optional
+dependencies (Rollup, esbuild, sharp, Tailwind oxide, lightningcss), so they must then be added
+back at matching versions, for example:
+
+```bash
+npm install --no-save --omit=optional \
+  @rollup/rollup-win32-x64-msvc@4.63.6 @esbuild/win32-x64@0.28.2 \
+  @img/sharp-win32-x64@0.34.5 @img/sharp-libvips-win32-x64@1.2.4 \
+  @tailwindcss/oxide-win32-x64-msvc@4.3.3 lightningcss-win32-x64-msvc@1.32.0
+```
+
+(`node scripts/copy-standalone-assets.mjs` runs automatically after every build and is what stops
+the production server from 404ing on every stylesheet and script.)
+
+## Current integration status
+
+Two integrations are **deliberately pending**. Nothing below is simulated, and the application
+never reports success for anything it has not actually done.
+
+| Area | Status |
+| --- | --- |
+| Lint, typecheck, unit tests, production build | Passing. 324 tests. |
+| Public pages, auth pages, route protection, media confinement, API auth | Verified against a running production server. |
+| Signup, login, entities, stages, uploads, readiness, publication | **Blocked on PostgreSQL.** |
+| AI provider discovery and verification | **Blocked on OpenCode.** |
+
+See [docs/POSTGRESQL-INTEGRATION.md](docs/POSTGRESQL-INTEGRATION.md),
+[docs/OPENCODE-INTEGRATION.md](docs/OPENCODE-INTEGRATION.md) and
+[docs/DEPENDENCY-REGISTER.md](docs/DEPENDENCY-REGISTER.md).
 
 ## Environment variables
 
@@ -87,16 +133,26 @@ Everything has a working default for local use; nothing is required to start.
 | `NEXORA_OPENCODE_PORT` | `4137` | Local OpenCode server port. |
 | `NEXORA_SESSION_COOKIE` | `nexora_session` | Session cookie name. |
 | `NEXORA_SESSION_TTL_DAYS` | `30` | Session lifetime. |
+| `NEXORA_COOKIE_SECURE` | `true` in production | Forces the `Secure` cookie attribute. |
 | `NEXORA_STORAGE_DIR` | `storage` | Site releases and other platform state. |
 | `NEXORA_PHOTO_DIR` | `storage/photos` | Uploaded photos. |
 | `NEXORA_PORTFOLIO_DIR` | `storage/portfolios` | Uploaded portfolio files. |
-| `NEXORA_ENTITY_HOST_SUFFIX` | `localhost` | Host suffix for platform-hosted entity sites. |
+| `NEXORA_ENTITY_HOST_SUFFIX` | `nexoraentity.com` | Host suffix for platform-hosted entity sites. |
 | `NEXORA_LOG_LEVEL` | `info` | Server log threshold. |
 | `NEXT_PUBLIC_NEXORA_LOG_LEVEL` | `info` | Client log threshold. |
+| `NEXORA_CRON_SECRET` | dev placeholder | **Must be set in production.** Gates `/api/cron`. |
+| `NEXORA_OPENCODE_URL` | unset | Full URL of the OpenCode bridge. Use this for a cloud-hosted bridge. |
+| `NEXORA_OPENCODE_TOKEN` | unset | Bearer token for the bridge. Required once it is not on loopback. |
+| `NEXORA_OPENCODE_HOST` / `_PORT` | `127.0.0.1` / `4137` | Loopback bridge location. |
 | `VERCEL_TOKEN` | unset | Enables real Vercel deployment. |
 
 With no `VERCEL_TOKEN`, publication uses the platform's own hosting tier and the interface says
 so. It is never presented as a Vercel deployment.
+
+**Storage note.** Photos, portfolios and platform-hosted releases are written to the local
+filesystem. That is correct for a long-lived Node host but **not viable on a serverless runtime**,
+where the filesystem is read-only and ephemeral. Object storage is required before a Vercel
+deployment; see [docs/DEPENDENCY-REGISTER.md](docs/DEPENDENCY-REGISTER.md).
 
 ## How verification works
 

@@ -50,7 +50,8 @@ function portOpen(port, host = '127.0.0.1', timeoutMs = 1200) {
  */
 function launchDetached(commandLine) {
   try {
-    const ps = `\$c = New-CimInstance -ClassName Win32_Process -ClientOnly; Invoke-CimMethod -InputObject \$c -MethodName Create -Arguments @{ CommandLine = '${commandLine.replace(/'/g, "''")}' } | Out-Null`;
+    // `$c` is escaped for the JavaScript template literal so PowerShell receives a literal `$c`.
+    const ps = `$c = New-CimInstance -ClassName Win32_Process -ClientOnly; Invoke-CimMethod -InputObject $c -MethodName Create -Arguments @{ CommandLine = '${commandLine.replace(/'/g, "''")}' } | Out-Null`;
     execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
       stdio: 'ignore',
       timeout: 30_000,

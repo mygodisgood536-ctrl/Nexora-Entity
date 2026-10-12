@@ -1,97 +1,83 @@
 /**
- * OpenCode server supervisor.
+ * OpenCode HTTP client — the only half of the bridge the web application may import.
  *
  * Nexora Entity does not talk to model providers directly. OpenCode is the provider/model
- * bridge: it is started (or attached to), exposes its real HTTP API, and is the only source
- * of provider/model availability. Nothing here hard-codes a provider list.
+ * bridge: it exposes its own HTTP API and is the only source of provider/model availability.
+ * Nothing here hard-codes a provider list.
+ *
+ * IMPORTANT — this module deliberately does not spawn processes.
+ *
+ * It used to also supervise a locally-spawned `opencode serve`. That made `node:child_process`
+ * part of the Next.js server-component graph, which made Turbopack trace and include the entire
+ * project in the build output, and it hard-wired the platform to a local machine. Both are
+ * wrong for a hosted deployment.
+ *
+ * The split is:
+ *   - `client.ts`     — attach-only HTTP client. Safe to import anywhere, including the web app.
+ *   - `supervisor.ts` — spawns a local OpenCode process. Used only by local development scripts.
+ *
+ * `ensureReady()` here therefore *attaches* to a running OpenCode and reports honestly when one
+ * is not reachable. In local development `npm run services` starts OpenCode; in a hosted
+ * deployment a cloud-hosted bridge is configured with `NEXORA_OPENCODE_HOST`/`_PORT`. Neither
+ * requires this module to know how the process was started.
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { createServer } from 'node:net';
-import { accessSync, constants, existsSync } from 'node:fs';
-import path from 'node:path';
 import { config } from '@nexora/core/config';
-import { createLogger, NexoraError, ConfigurationError } from '@nexora/core';
+import { createLogger, ConfigurationError } from '@nexora/core';
 
 const log = createLogger('opencode');
 
 export type BridgeState = 'stopped' | 'starting' | 'ready' | 'unavailable';
 
-let child: ChildProcess | undefined;
-let state: BridgeState = 'stopped';
-let version: string | null = null;
-let startPromise: Promise<void> | null = null;
-let lastError: string | null = null;
-
-/** Locate the OpenCode binary: explicit env, project install, then PATH. */
-export function resolveOpencodeBinary(): string {
-  const cfg = config();
-  if (cfg.opencodeBinary) {
-    // Resolved from configuration at runtime; tracing is declared explicitly where needed.
-    if (existsSync(/* turbopackIgnore: true */ cfg.opencodeBinary)) return cfg.opencodeBinary;
-    throw ConfigurationError(
-      `The configured OpenCode binary does not exist at ${cfg.opencodeBinary}.`,
-      'Set OPENCODE_BIN to a valid OpenCode executable, or run: npm run opencode:install',
-    );
-  }
-  const candidates = [
-    path.join(cfg.repoRoot, 'node_modules', 'opencode-ai', 'bin', 'opencode.exe'),
-    path.join(cfg.repoRoot, 'node_modules', 'opencode-ai', 'bin', 'opencode'),
-    path.join(cfg.repoRoot, 'node_modules', '.bin', 'opencode'),
-  ];
-  for (const c of candidates) if (existsSync(/* turbopackIgnore: true */ c)) return c;
-  throw ConfigurationError(
-    'OpenCode is not installed in this project, so Nexora Entity cannot discover AI providers.',
-    'Run: npm run opencode:install',
-  );
+/**
+ * Module state is held on `globalThis` for the same reason the database pool is
+ * (`packages/db/src/pool.ts`): a production Next build emits one module instance per route
+ * chunk, so module-level state would be duplicated per route and two chunks could each believe
+ * they owned the bridge.
+ */
+interface BridgeModuleState {
+  state: BridgeState;
+  version: string | null;
+  lastError: string | null;
 }
+
+const KEY = Symbol.for('nexora.entity.opencode.bridge');
+const holder = globalThis as unknown as Record<symbol, BridgeModuleState | undefined>;
+const mod: BridgeModuleState = (holder[KEY] ??= {
+  state: 'stopped',
+  version: null,
+  lastError: null,
+});
 
 export function baseUrl(): string {
   const cfg = config();
-  return `http://${cfg.opencodeHost}:${cfg.opencodePort}`;
+  const scheme = cfg.opencodeUrl?.startsWith('https://') ? 'https' : 'http';
+  return cfg.opencodeUrl ?? `${scheme}://${cfg.opencodeHost}:${cfg.opencodePort}`;
 }
 
 export function getState(): BridgeState {
-  return state;
+  return mod.state;
 }
 
 export function getVersion(): string | null {
-  return version;
+  return mod.version;
 }
 
 export function getLastError(): string | null {
-  return lastError;
+  return mod.lastError;
 }
 
-/** Is something already serving the configured OpenCode port? */
-async function portOpen(timeoutMs = 1200): Promise<boolean> {
-  const cfg = config();
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (v: boolean) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(v);
-    };
-    const socket = createServer();
-    const timer = setTimeout(() => {
-      socket.close();
-      finish(false);
-    }, timeoutMs);
-    socket.once('error', () => finish(false));
-    socket.once('listening', () => socket.close(() => finish(true)));
-    socket.listen(cfg.opencodePort, cfg.opencodeHost);
-  });
-}
-
-async function httpGet(pathname: string, timeoutMs: number): Promise<{ status: number; body: string } | null> {
+export async function httpGet(
+  pathname: string,
+  timeoutMs: number,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; body: string } | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${baseUrl()}${pathname}`, {
       signal: controller.signal,
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...headers },
     });
     const body = await res.text();
     return { status: res.status, body };
@@ -112,155 +98,69 @@ export interface BridgeHealth {
 
 /** Health probe. Never throws — the caller decides how to surface a problem. */
 export async function health(): Promise<BridgeHealth> {
-  const res = await httpGet('/global/health', 4000);
+  const cfg = config();
+  // A hosted bridge is expected to require credentials; local development usually does not.
+  const headers: Record<string, string> = cfg.opencodeToken ? { authorization: `Bearer ${cfg.opencodeToken}` } : {};
+  const res = await httpGet('/global/health', 4000, headers);
   if (res && res.status === 200) {
     try {
       const parsed = JSON.parse(res.body) as { healthy?: boolean; version?: string };
-      state = 'ready';
-      version = parsed.version ?? version;
+      mod.state = 'ready';
+      mod.version = parsed.version ?? mod.version;
       return {
         healthy: parsed.healthy !== false,
-        version,
-        managed: Boolean(child && !child.killed),
-        pid: child?.pid ?? null,
-        detail: `OpenCode ${version ?? ''} reachable at ${baseUrl()}`,
+        version: mod.version,
+        managed: false,
+        pid: null,
+        detail: `OpenCode ${mod.version ?? ''} reachable at ${baseUrl()}`,
       };
     } catch {
-      /* fall through */
+      /* fall through to the unhealthy result below */
     }
   }
   return {
     healthy: false,
-    version,
-    managed: Boolean(child && !child.killed),
-    pid: child?.pid ?? null,
-    detail: lastError ?? `OpenCode did not respond at ${baseUrl()}`,
+    version: mod.version,
+    managed: false,
+    pid: null,
+    detail: mod.lastError ?? `OpenCode did not respond at ${baseUrl()}`,
   };
 }
 
 /**
- * Ensure OpenCode is reachable. Attaches to an existing server when one is present,
- * otherwise starts a managed one. Idempotent and concurrency-safe.
+ * Ensure OpenCode is reachable by attaching to it.
+ *
+ * This never starts a process. When nothing is listening it throws a ConfigurationError that
+ * says exactly how to make it reachable, which is what lets the UI show an honest pending state
+ * instead of pretending an AI provider exists.
  */
 export async function ensureReady(): Promise<BridgeHealth> {
-  const cfg = config();
-  const existing = await health();
-  if (existing.healthy) {
-    if (state !== 'ready') {
-      state = 'ready';
-      log.info('attached to running OpenCode server', { url: baseUrl(), version });
+  const h = await health();
+  if (h.healthy) {
+    if (mod.state !== 'ready') {
+      mod.state = 'ready';
+      log.info('attached to OpenCode server', { url: baseUrl(), version: mod.version });
     }
-    return existing;
+    return h;
   }
-  if (!cfg.opencodeManaged) {
-    throw ConfigurationError(
-      `Nexora Entity is configured to use an external OpenCode server at ${baseUrl()}, but it is not responding.`,
-      'Start OpenCode with `opencode serve --port 4137`, or set NEXORA_OPENCODE_MANAGED=true so Nexora Entity starts it.',
-    );
-  }
-  if (startPromise) {
-    await startPromise;
-    return health();
-  }
-  startPromise = startManaged();
-  try {
-    await startPromise;
-  } finally {
-    startPromise = null;
-  }
-  return health();
+  mod.state = 'unavailable';
+  mod.lastError = h.detail;
+  throw ConfigurationError(
+    `Nexora Entity could not reach the OpenCode AI bridge at ${baseUrl()}.`,
+    cfgStartHint(),
+  );
 }
 
-async function startManaged(): Promise<void> {
+function cfgStartHint(): string {
   const cfg = config();
-  state = 'starting';
-  const binary = resolveOpencodeBinary();
-  log.info('starting managed OpenCode server', { binary, port: cfg.opencodePort });
-
-  const logPath = path.join(cfg.repoRoot, '.pg', 'logs', 'opencode-bridge.log');
-  let stdoutFd: number | undefined;
-  try {
-    const { openSync } = await import('node:fs');
-    stdoutFd = openSync(logPath, 'a');
-  } catch {
-    stdoutFd = undefined;
+  if (cfg.opencodeManaged) {
+    return 'Locally, start it with `npm run services`. On a hosted deployment, set NEXORA_OPENCODE_URL (and NEXORA_OPENCODE_TOKEN if the bridge requires authentication) to the cloud-hosted bridge.';
   }
-
-  const args = [
-    'serve',
-    '--port',
-    String(cfg.opencodePort),
-    '--hostname',
-    cfg.opencodeHost,
-    '--log-level',
-    cfg.logLevel === 'debug' ? 'DEBUG' : cfg.logLevel === 'warn' ? 'WARN' : 'INFO',
-  ];
-
-  child = spawn(binary, args, {
-    cwd: cfg.repoRoot,
-    env: { ...process.env, NO_COLOR: '1' },
-    windowsHide: true,
-    detached: false,
-    stdio: ['ignore', stdoutFd ?? 'ignore', stdoutFd ?? 'ignore'],
-  });
-
-  child.on('exit', (code, signal) => {
-    log.warn('managed OpenCode server exited', { code, signal });
-    state = 'stopped';
-    child = undefined;
-  });
-  child.on('error', (err) => {
-    lastError = err.message;
-    log.error('failed to spawn OpenCode', { message: err.message });
-  });
-
-  // Poll for readiness rather than trusting a single attempt.
-  const deadline = Date.now() + 45_000;
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 400));
-    const h = await health();
-    if (h.healthy) {
-      state = 'ready';
-      log.info('managed OpenCode server ready', { version, url: baseUrl() });
-      return;
-    }
-  }
-  state = 'unavailable';
-  lastError = lastError ?? 'OpenCode did not become ready within 45s';
-  throw new NexoraError({
-    code: 'ai_provider_bridge_unavailable',
-    domain: 'ai_provider',
-    message:
-      'Nexora Entity could not start the OpenCode AI bridge, so no AI provider or model is available right now. Your information is safe.',
-    detail: lastError,
-    retryable: true,
-    remediation: [
-      { kind: 'retry', label: 'Try again', primary: true },
-      { kind: 'contact_support', label: 'Get help' },
-    ],
-  });
+  return 'Set NEXORA_OPENCODE_HOST and NEXORA_OPENCODE_PORT (or NEXORA_OPENCODE_URL) to the machine running OpenCode.';
 }
 
 export async function getVersionString(): Promise<string | null> {
-  if (version) return version;
+  if (mod.version) return mod.version;
   const h = await health();
   return h.version;
-}
-
-export async function stopManaged(): Promise<void> {
-  if (child && !child.killed) {
-    child.kill();
-    child = undefined;
-  }
-  state = 'stopped';
-}
-
-/** Used by scripts that need the binary on PATH-like behaviour. */
-export function binaryIsExecutable(binary: string): boolean {
-  try {
-    accessSync(binary, constants.X_OK);
-    return true;
-  } catch {
-    return existsSync(binary);
-  }
 }

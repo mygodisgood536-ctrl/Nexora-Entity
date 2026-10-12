@@ -1,32 +1,29 @@
 import Link from 'next/link';
-import { config } from '@nexora/core/config';
 import { findEntityForUser, listEntitiesForUser } from '@nexora/db';
-import { buildArtefact } from '@nexora/deploy';
 import { requireUser } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
+/**
+ * Full-page preview of the public Entity Website.
+ *
+ * The preview itself is served by `/api/preview/[id]`, which owns entity access control and
+ * renders through the same out-of-process renderer the published site uses. This page is only
+ * the frame and its chrome, so it deliberately does not build an artefact of its own — doing so
+ * would render the whole entity twice and would require the renderer subprocess on a runtime
+ * that may not permit spawning one.
+ */
 export default async function FullPreviewPage({ params }: { params: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser();
   const routeParams = await params;
   const slugParam = Array.isArray(routeParams['slug']) ? routeParams['slug'][0] : routeParams['slug'];
   if (!slugParam) return <p className="nx-shell py-10">Not found</p>;
 
-  const entities = await listEntitiesForUser(user.id);
-  const entity =
-    entities.find((e) => e.slug === slugParam || e.id === slugParam) ?? entities[0];
+  // Prefer an ownership-checked lookup by id; fall back to this account's slug list. If neither
+  // matches, say so rather than silently substituting a different entity.
+  const entity = (await findEntityForUser(slugParam, user.id)) ?? (await listEntitiesForUser(user.id)).find((e) => e.slug === slugParam);
   if (!entity) return <p className="nx-shell py-10">Not found</p>;
-  void findEntityForUser;
-
-  const artefact = await buildArtefact({
-    entityId: entity.id,
-    canonicalUrl: `${config().platformOrigin}/e/${entity.slug}`,
-    mediaBase: `${config().platformOrigin}/media`,
-    published: false,
-  });
-
-  const html = artefact.html.replace('</body>', `${BRIDGE}</body>`);
 
   return (
     <>
@@ -37,12 +34,11 @@ export default async function FullPreviewPage({ params }: { params: Promise<Reco
           </Link>
           <span className="nx-help">Preview &middot; not published</span>
         </div>
-        <div className="nx-row">
-          <span className="nx-badge">{artefact.model.sections.length} sections</span>
-          <span className="nx-badge">{Math.round(Buffer.byteLength(artefact.html, 'utf8') / 1024)} KB</span>
-        </div>
+        <span className="nx-help">
+          This is the same design system that gets published. Sections appear only where your verified information
+          supports them.
+        </span>
       </div>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <iframe
         title="Entity Website preview"
         src={`/api/preview/${entity.id}`}
@@ -52,11 +48,3 @@ export default async function FullPreviewPage({ params }: { params: Promise<Reco
     </>
   );
 }
-
-const BRIDGE = `<script>
-(function () {
-  function send() { try { parent.postMessage({ type: 'nexora:entity-preview-height', height: document.documentElement.scrollHeight }, '*'); } catch (e) {} }
-  if (window.ResizeObserver) { new ResizeObserver(send).observe(document.body); }
-  setInterval(send, 500);
-})();
-</script>`;

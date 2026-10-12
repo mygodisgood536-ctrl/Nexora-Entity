@@ -47,8 +47,9 @@ export default function SignupForm() {
         setError(body.error ?? null);
         return;
       }
-      // Spec §4: after signup the user must sign in.
-      router.push('/login?next=' + encodeURIComponent('/app&justRegistered=1'));
+      // Spec §4: after signup the person must sign in. The server owns this URL so the
+      // `next`/`justRegistered` query pair is encoded once, in one place.
+      router.push(body.next ?? '/login?justRegistered=1');
     } catch {
       setError({
         code: 'network',

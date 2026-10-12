@@ -191,7 +191,10 @@ export async function updateDeployment(
   if (patch.fileCount !== undefined) push('file_count', patch.fileCount);
   if (patch.validation !== undefined) push('validation', JSON.stringify(patch.validation));
   if (patch.error !== undefined) push('error', patch.error === null ? null : JSON.stringify(patch.error));
-  if (patch.logAppend !== undefined) push('log', `${patch.logAppend}\n`);
+  // `log` must concatenate in SQL. Assigning `log = $n` replaced the column on every call, so each
+  // deployment step destroyed the previous step's output and the UI only ever showed the final
+  // chunk of a deployment log.
+  if (patch.logAppend !== undefined) sets.push(`log = coalesce(log, '') || $${params.push(patch.logAppend)} || E'\\n'`);
   if (patch.finished) sets.push('finished_at = now()');
   await query(`UPDATE deployments SET ${sets.join(', ')} WHERE id = $1`, params);
 }

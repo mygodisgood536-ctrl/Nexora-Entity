@@ -17,9 +17,7 @@ import {
   saveStageProgress,
   setSourcePublished,
   updateClaimStatus,
-  upsertClaim,
   upsertVerifiedAiConfiguration,
-  upsertIdentityLink,
   insertPhoto,
   updatePhotoAssessment,
   updatePortfolioExtraction,
@@ -118,7 +116,7 @@ async function main() {
 
   // 2. Entity
   console.log('\n--- 2. Create Entity ---');
-  let entities = await listEntitiesForUser(user.id);
+  const entities = await listEntitiesForUser(user.id);
   let entity = entities[0];
   if (!entity) {
     entity = await createEntity({ userId: user.id, displayName: SUBJECT.primaryName });
@@ -587,7 +585,7 @@ main()
     // process is killed from outside — which is what this script reported as `EXIT -1` even
     // after every step had completed. Stop the child, then close the pool.
     try {
-      const { stopManaged } = await import('@nexora/opencode-bridge/server');
+      const { stopManaged } = await import('@nexora/opencode-bridge/supervisor');
       await stopManaged();
     } catch {
       /* the bridge was never started */

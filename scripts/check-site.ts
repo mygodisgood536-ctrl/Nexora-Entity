@@ -6,14 +6,7 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { listClaims,
-  listEntitiesForUser,
-  listIdentityLinks,
-  listPhotos,
-  listSources,
-  updateClaimStatus,
-  closePool,
-} from '@nexora/db';
+import { listClaims, updateClaimStatus, closePool } from '@nexora/db';
 import { buildArtefact, validateArtefact, chooseTarget, designSystemCss } from '@nexora/deploy';
 import { vercelDiagnostics } from '@nexora/deploy';
 import { ensurePlatformSubdomain } from '@nexora/deploy';

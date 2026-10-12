@@ -1,15 +1,25 @@
-import { Suspense } from 'react';
 import { LoginForm } from '@/components/login-form';
 
 /**
- * Sign-in is a client page because it reads `?justRegistered` and `?next`. Reading search
- * params during prerendering requires a Suspense boundary, so the shell stays a server
- * component and only the form itself is dynamic.
+ * Sign-in.
+ *
+ * `?justRegistered` and `?next` are read here, on the server, and passed down as ordinary props.
+ *
+ * They used to be read inside the client component via `useSearchParams()`, wrapped in a
+ * Suspense boundary. Because the route is statically prerendered, that combination caused Next
+ * to bail the whole form out to client-side rendering: the shipped HTML contained only an empty
+ * `<div aria-busy="true">`, so the primary sign-in screen was blank until hydration finished and
+ * was completely blank with JavaScript disabled. Reading the params on the server renders the
+ * complete form in the initial HTML.
  */
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="nx-shell nx-shell--narrow py-20" aria-busy="true" />}>
-      <LoginForm />
-    </Suspense>
-  );
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const next = typeof query['next'] === 'string' ? query['next'] : null;
+  const justRegistered = query['justRegistered'] === '1';
+
+  return <LoginForm next={next} justRegistered={justRegistered} />;
 }

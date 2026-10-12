@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '@nexora/core/config';
-import { StorageError, toActionableError } from '@nexora/core';
+import { StorageError } from '@nexora/core';
 import {
   findEntityForUser,
   insertPhoto,
@@ -43,7 +43,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   }
 
   const cfg = config();
-  const photoDir = path.join(cfg.repoRoot, cfg.photoDir.replace(/^.*?(photos)$/i, '$1').replace(/^photos$/, 'photos'));
+  // `config().photoDir` is already an absolute path (resolveDir applies path.resolve). It was
+  // previously rewritten down to the literal "photos" and re-joined onto repoRoot, which silently
+  // ignored NEXORA_PHOTO_DIR and NEXORA_STORAGE_DIR entirely.
+  const photoDir = cfg.photoDir;
   await mkdir(photoDir, { recursive: true });
 
   const results: { label: string; ok: boolean; detail: string }[] = [];
@@ -111,5 +114,3 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
   return NextResponse.json({ ok: true, data: { results } });
 }
-
-export { toActionableError };

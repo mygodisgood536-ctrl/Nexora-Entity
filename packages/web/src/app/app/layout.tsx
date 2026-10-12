@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { PRODUCT_NAME } from '@nexora/core';
-import { listEntitiesForUser } from '@nexora/db';
+import { PRODUCT_NAME, STAGES } from '@nexora/core';
+import { listEntitiesForUser, listStageProgress } from '@nexora/db';
 import { requireUser } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +8,17 @@ export const dynamic = 'force-dynamic';
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser('/app');
   const entities = await listEntitiesForUser(user.id);
+  const current = entities[0];
+
+  // "Build" resumes at the first stage that is not yet complete rather than always resetting the
+  // person to stage A, so returning to the platform lands them where they actually stopped.
+  let buildHref: string | null = null;
+  if (current) {
+    const progress = await listStageProgress(current.id);
+    const firstOpen = STAGES.find((s) => progress.find((p) => p.stage_key === s.key)?.status !== 'complete');
+    buildHref = `/app/stages/${firstOpen?.key ?? STAGES[0]?.key ?? 'A_identity'}?entity=${current.id}`;
+  }
+
   const header = (
     <header className="sticky top-0 z-40 border-b border-ink-100 bg-white/90 backdrop-blur">
       <div className="nx-shell flex flex-wrap items-center justify-between gap-3 py-3">
@@ -26,28 +36,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/app" className="rounded-full px-3 py-1.5 text-ink-500 no-underline hover:bg-ink-50 hover:text-ink-900">
               Entities
             </Link>
-            {entities[0] ? (
+            {current ? (
               <>
                 <Link
-                  href={`/app/stages/${entities[0].slug}`}
+                  href={buildHref ?? '/app'}
                   className="rounded-full px-3 py-1.5 text-ink-500 no-underline hover:bg-ink-50 hover:text-ink-900"
                 >
                   Build
                 </Link>
                 <Link
-                  href={`/app/review?entity=${entities[0].id}`}
+                  href={`/app/review?entity=${current.id}`}
                   className="rounded-full px-3 py-1.5 text-ink-500 no-underline hover:bg-ink-50 hover:text-ink-900"
                 >
                   Review
                 </Link>
                 <Link
-                  href={`/app/readiness?entity=${entities[0].id}`}
+                  href={`/app/readiness?entity=${current.id}`}
                   className="rounded-full px-3 py-1.5 text-ink-500 no-underline hover:bg-ink-50 hover:text-ink-900"
                 >
                   Readiness
                 </Link>
                 <Link
-                  href={`/app/publish?entity=${entities[0].id}`}
+                  href={`/app/publish?entity=${current.id}`}
                   className="rounded-full px-3 py-1.5 text-ink-500 no-underline hover:bg-ink-50 hover:text-ink-900"
                 >
                   Publish
@@ -70,7 +80,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     </header>
   );
 
-  void redirect;
   return (
     <div className="min-h-screen pb-24">
       {header}

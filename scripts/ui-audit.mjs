@@ -63,6 +63,18 @@ function parseColor(input) {
 function luminance({ r, g, b }) {
   const channel = (v) => {
     const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function contrastRatio(fg, bg) {
+  const l1 = luminance(fg);
+  const l2 = luminance(bg);
+  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 /** Runs in the page: resolve the effective backdrop behind each text node. */
 const CONTRAST_PROBE = () => {
   const parse = (input) => {
@@ -170,20 +182,6 @@ const describe = (el) =>
 
 const findings = { screens: [], contrast: [], focus: [], overflow: [], motion: null, notes: [] };
 
-// __CHUNK3__
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-function contrastRatio(fg, bg) {
-  const l1 = luminance(fg);
-  const l2 = luminance(bg);
-  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-// __CHUNK2__
 async function auditScreen(context, label, route, { interactive = true } = {}) {
   const page = await context.newPage();
   const record = { label, path: route, shots: [], status: null, error: null };
@@ -273,8 +271,6 @@ async function auditScreen(context, label, route, { interactive = true } = {}) {
   findings.screens.push(record);
   return record;
 }
-
-// __CHUNK4__
 
 /**
  * Locate a real, already-installed Chromium browser.

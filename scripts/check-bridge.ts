@@ -3,7 +3,8 @@
  * provider/model — no mocks. Prints what it actually observed.
  */
 import { closePool, latestOpencodeSnapshot, logAiAttempt, saveOpencodeSnapshot } from '@nexora/db';
-import { ensureReady, fetchCatalogue, health, stopManaged, verifyModel } from '@nexora/opencode-bridge';
+import { ensureReady, fetchCatalogue, health, verifyModel } from '@nexora/opencode-bridge';
+import { stopManaged } from '@nexora/opencode-bridge/supervisor';
 
 async function main() {
   console.log('--- 1. bridge health ---');

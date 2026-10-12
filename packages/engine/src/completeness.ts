@@ -77,7 +77,7 @@ function stageStatus(stages: StageProgressRecord[], key: StageKey): StageStatus 
 }
 
 export function evaluateCompleteness(input: CompletenessInput): CompletenessResult {
-  const { claims, stages, sources, photos, portfolioFiles } = input;
+  const { claims, stages, sources, portfolioFiles } = input;
   const materialGaps: MaterialGap[] = [];
   const optionalGaps: MaterialGap[] = [];
 

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      secure: config().platformOrigin.startsWith('https://'),
+      secure: config().cookieSecure,
       expires: session.expiresAt,
     });
     return NextResponse.json({ ok: true, next: '/app' });

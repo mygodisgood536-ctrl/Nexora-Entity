@@ -50,7 +50,7 @@ export default function PublishConsole({
       const res = await fetch('/api/publish', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ entityId }),
+        body: JSON.stringify({ entityId, target: availableTarget }),
       });
       const body = (await res.json()) as { ok: boolean; error?: ActionableErrorShape; data?: DeploymentResult };
       if (!body.ok) {
@@ -110,11 +110,29 @@ export default function PublishConsole({
           {error.detail ? <p className="mt-1 text-xs">{error.detail}</p> : null}
           <p className="mt-1 text-xs">Nothing was published. Your entity information is unchanged.</p>
           <div className="nx-row mt-2">
-            {error.remediation.map((r, i) => (
-              <a key={r.kind + i} href={r.href ?? '#'} className={`nx-btn nx-btn--sm ${r.primary ? 'nx-btn--primary' : 'nx-btn--ghost'}`}>
-                {r.label}
-              </a>
-            ))}
+            {/* A retry action has no destination: rendering it as an <a href="#"> produced a
+                control that looked actionable and navigated nowhere. Only remediation that
+                actually names a target becomes a link. */}
+            {error.remediation.map((r, i) =>
+              r.href ? (
+                <a
+                  key={r.kind + i}
+                  href={r.href}
+                  className={`nx-btn nx-btn--sm ${r.primary ? 'nx-btn--primary' : 'nx-btn--ghost'}`}
+                >
+                  {r.label}
+                </a>
+              ) : (
+                <button
+                  key={r.kind + i}
+                  type="button"
+                  className={`nx-btn nx-btn--sm ${r.primary ? 'nx-btn--primary' : 'nx-btn--ghost'}`}
+                  onClick={() => void publish()}
+                >
+                  {r.label}
+                </button>
+              ),
+            )}
           </div>
         </div>
       ) : null}

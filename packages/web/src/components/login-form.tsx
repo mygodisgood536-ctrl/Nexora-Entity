@@ -2,20 +2,40 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PRODUCT_NAME } from '@nexora/core';
 import type { ActionableErrorShape } from '@nexora/core';
 
-export function LoginForm() {
+/**
+ * Constrain the post-login destination to a path inside this application.
+ *
+ * `next` arrives from the URL, so it is attacker-controllable. Without this check,
+ * `/login?next=https://evil.example` would send a freshly authenticated person straight offsite.
+ * Protocol-relative (`//host`) and backslash (`/\host`) forms are rejected too, because both are
+ * parsed as absolute URLs by the browser.
+ */
+function safeNext(raw: string | null): string {
+  if (!raw) return '/app';
+  if (!raw.startsWith('/')) return '/app';
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return '/app';
+  return raw;
+}
+
+interface Props {
+  /** Post-login destination, already validated by the server page. */
+  next: string | null;
+  /** Whether the person arrived here straight after creating an account. */
+  justRegistered: boolean;
+}
+
+export function LoginForm({ next: requestedNext, justRegistered }: Props) {
   const router = useRouter();
-  const params = useSearchParams();
   const [username, setUsername] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [error, setError] = useState<ActionableErrorShape | null>(null);
   const [busy, setBusy] = useState(false);
-  const justRegistered = params.get('justRegistered') === '1';
-  const next = params.get('next') ?? '/app';
+  const next = safeNext(requestedNext);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

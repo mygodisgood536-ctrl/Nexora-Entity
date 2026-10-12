@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ProviderPanel, { type ActiveConfig } from './provider-panel';
 
 interface Props {
@@ -15,11 +15,11 @@ interface Props {
  */
 export default function ProviderDock({ initial, defaultOpen }: Props) {
   const [config, setConfig] = useState<ActiveConfig | null>(initial);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (defaultOpen) setOpen(true);
-  }, [defaultOpen]);
+  // `defaultOpen` seeds the initial state rather than being pushed into it by an effect. The
+  // panel only ever needs to open itself once, on arrival; an effect that re-ran on the prop
+  // would force an extra render pass for no benefit, and would re-open a panel the person had
+  // just dismissed if the prop were ever recomputed.
+  const [open, setOpen] = useState(Boolean(defaultOpen));
 
   const failed = Boolean(config?.lastError);
 

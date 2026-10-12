@@ -66,7 +66,7 @@ function photoUrl(photo: PhotoRecord, mediaBase: string): string {
 function siteImages(photos: PhotoRecord[], mediaBase: string, entitySlug: string): SiteImage[] {
   return photos
     .filter((p) => p.representation_status !== 'rejected' && p.public_url !== null)
-    .map((p, i) => ({
+    .map((p) => ({
       url: photoUrl(p, mediaBase),
       alt: p.alt ?? p.caption ?? `Photograph of ${entitySlug.replace(/-/g, ' ')}`,
       isPrimary: p.is_primary,

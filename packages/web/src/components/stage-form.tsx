@@ -37,12 +37,15 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<ActionableErrorShape | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+    /**
+   * True only once the person has actually changed something.
+   *
+   * Autosave is gated on this. Without the gate, merely *opening* a stage rewrites its status to
+   * `in_progress` about a second after mount, which silently downgrades a stage the person had
+   * deliberately marked Complete or Skipped â€” and the readiness report reads exactly this column.
+   */
+  const [dirty, setDirty] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   const save = useCallback(
     async (nextStatus: 'in_progress' | 'complete' | 'skipped', opts: { analyse?: boolean } = {}) => {
@@ -62,12 +65,13 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
         setStatus(nextStatus);
         setSavedAt(new Date().toISOString());
         setMessage(null);
+        setDirty(false);
         return true;
       } catch {
         setError({
           code: 'network',
           domain: 'system',
-          message: 'Your changes could not be saved just now. They are still on screen — try again in a moment.',
+          message: 'Your changes could not be saved just now. They are still on screen â€” try again in a moment.',
           retryable: true,
           remediation: [{ kind: 'retry', label: 'Try saving again', primary: true }],
           preservesUserProgress: true,
@@ -83,9 +87,10 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
     [data, entityId, stage.key],
   );
 
-  // Autosave: debounced, and only after the form has hydrated, so nothing is written on mount.
-  useEffect(() => {
-    if (!hydrated) return;
+// Autosave: debounced, and only after a real edit. Opening a stage must never write, otherwise
+// simply viewing a stage the person had marked Complete or Skipped would undo that decision.
+useEffect(() => {
+    if (!dirty) return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       void save('in_progress');
@@ -93,11 +98,12 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [data, hydrated, save]);
+  }, [data, dirty, save]);
 
   function setField(key: string, value: Value) {
     setData((prev) => ({ ...prev, [key]: value }));
     setMessage(null);
+    setDirty(true);
   }
 
   const filledCount = useMemo(() => {
@@ -155,7 +161,12 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
                   key={r.kind + i}
                   type="button"
                   className={`nx-btn nx-btn--sm ${r.primary ? 'nx-btn--primary' : 'nx-btn--ghost'}`}
-                  onClick={() => void save(status === 'skipped' ? 'in_progress' : (status as 'in_progress'))}
+                  onClick={() =>
+                    // Re-assert the decision the person already made. A stage they marked
+                    // Complete or Skipped must not be downgraded to In progress just because the
+                    // save failed and they pressed "try again".
+                    void save(status === 'complete' || status === 'skipped' ? status : 'in_progress')
+                  }
                 >
                   {r.label}
                 </button>
@@ -180,8 +191,8 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
       <div className="nx-card nx-card--pad nx-stack">
         <div className="nx-row justify-between">
           <p className="nx-help">
-            {saving ? 'Saving…' : savedAt ? `Autosaved ${new Date(savedAt).toLocaleTimeString()}` : 'Autosaves as you type'}
-            {filledCount > 0 ? ` · ${filledCount} field${filledCount === 1 ? '' : 's'} filled` : ''}
+            {saving ? 'Savingâ€¦' : savedAt ? `Autosaved ${new Date(savedAt).toLocaleTimeString()}` : 'Autosaves as you type'}
+            {filledCount > 0 ? ` Â· ${filledCount} field${filledCount === 1 ? '' : 's'} filled` : ''}
           </p>
           {requiredMissing.length > 0 && status !== 'skipped' ? (
             <p className="nx-help">
@@ -217,14 +228,14 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
 function StatusBadge({ status, saving }: { status: string; saving: boolean }) {
   const map: Record<string, { label: string; cls: string }> = {
     complete: { label: 'Complete', cls: 'nx-badge--good' },
-    skipped: { label: 'Skipped — not satisfied', cls: 'nx-badge--warn' },
+    skipped: { label: 'Skipped â€” not satisfied', cls: 'nx-badge--warn' },
     in_progress: { label: 'In progress', cls: 'nx-badge--accent' },
     pending: { label: 'Not started', cls: '' },
   };
   const entry = map[status] ?? map['pending']!;
   return (
     <span className={`nx-badge ${entry.cls}`}>
-      {saving ? 'Saving…' : entry.label}
+      {saving ? 'Savingâ€¦' : entry.label}
     </span>
   );
 }
@@ -357,7 +368,7 @@ function PhotoUploader({ entityId, field }: { entityId: string; field: StageFiel
         {field.help ?? 'A clear primary portrait plus supporting photographs work best.'} Each upload is checked for
         validity, resolution and duplication. Nexora Entity does not run biometric face matching.
       </p>
-      {state.busy ? <p className="nx-help">Checking your uploads…</p> : null}
+      {state.busy ? <p className="nx-help">Checking your uploadsâ€¦</p> : null}
       {state.error ? (
         <div className="nx-notice nx-notice--stop" role="alert">
           <p className="text-xs font-semibold">{state.error.message}</p>
@@ -376,7 +387,7 @@ function PhotoUploader({ entityId, field }: { entityId: string; field: StageFiel
                   {item.ok ? 'Counts' : 'Not counted'}
                 </span>
                 <span className="min-w-0 flex-1 text-ink-600">
-                  <span className="font-medium">{item.label}</span> — {item.detail}
+                  <span className="font-medium">{item.label}</span> â€” {item.detail}
                 </span>
               </li>
             ))}
@@ -447,7 +458,7 @@ function PortfolioUploader({ entityId, field }: { entityId: string; field: Stage
         is treated as information you supplied. Nothing from it is published until you accept it, and a portfolio never
         replaces the five-website minimum.
       </p>
-      {state.busy ? <p className="nx-help">Reading your portfolio…</p> : null}
+      {state.busy ? <p className="nx-help">Reading your portfolioâ€¦</p> : null}
       {state.error ? (
         <div className="nx-notice nx-notice--stop" role="alert">
           <p className="text-xs font-semibold">{state.error.message}</p>
@@ -455,16 +466,16 @@ function PortfolioUploader({ entityId, field }: { entityId: string; field: Stage
       ) : null}
       {state.items.map((item, i) => (
         <p key={i} className="nx-help">
-          <span className="font-medium">{item.label}</span> — {item.detail}
+          <span className="font-medium">{item.label}</span> â€” {item.detail}
         </p>
       ))}
       {discovered.length > 0 ? (
         <div className="nx-notice nx-notice--info">
-          <p className="text-xs font-semibold">Found in your portfolio — review before anything is published</p>
+          <p className="text-xs font-semibold">Found in your portfolio â€” review before anything is published</p>
           <ul className="nx-stack-sm mt-1" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {discovered.slice(0, 8).map((d, i) => (
               <li key={i} className="text-xs leading-relaxed">
-                <span className="font-medium">{d.value}</span> — {d.context}
+                <span className="font-medium">{d.value}</span> â€” {d.context}
               </li>
             ))}
           </ul>

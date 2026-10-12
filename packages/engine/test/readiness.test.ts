@@ -44,6 +44,24 @@ describe('Entity Readiness: the three evidence minimums', () => {
     expect(checkById(evaluateReadiness(completeEntity({ photosQualifying: 3 })), 'photos_minimum_4')?.outcome).toBe('fail');
   });
 
+  it('recomputes the photo count rather than trusting the caller', () => {
+    // Regression: the website and press minimums were clamped against the source records in
+    // front of the gate, but the photo minimum trusted the caller's summary number outright. A
+    // caller claiming four qualifying photos while supplying none could therefore pass the
+    // photo requirement — the exact lie the clamp exists to prevent.
+    const lying = evaluateReadiness(completeEntity({ photosQualifying: 99, photos: [] }));
+    const check = checkById(lying, 'photos_minimum_4');
+    expect(check?.outcome).toBe('fail');
+    expect(check?.detail).toContain('0 of 4');
+    expect(lying.status).toBe('blocked');
+    expect(lying.blockingIssues.some((b) => b.checkId === 'photos_minimum_4')).toBe(true);
+  });
+
+  it('does not count rejected photos toward the photo minimum', () => {
+    const withRejected = evaluateReadiness(completeEntity({ photosQualifying: 4, photos: [] }));
+    expect(checkById(withRejected, 'photos_minimum_4')?.outcome).toBe('fail');
+  });
+
   it('reports a publishable entity at 100% when every minimum is met', () => {
     const report = evaluateReadiness(completeEntity());
     expect(report.status).toBe('ready');
@@ -128,25 +146,110 @@ describe('Entity Readiness: the mandatory second pass', () => {
     }
   });
 
-  it('re-examines the whole entity rather than only the corrected fields', () => {
-    // Zero corrections were made, yet the second pass still reaches its own verdict across
-    // many questions. If it only rechecked changed fields it would have almost nothing to say.
-    const report = evaluateReadiness(completeEntity({ kind: 'second_pass', correctionsSinceParent: 0 }));
-    expect(report.secondPassAnswers!.length).toBeGreaterThan(2);
+  it('re-derives the evidence minimums from the records, not from the caller summary', () => {
+    // The second pass must reach its own verdict rather than restating the first pass's. The
+    // sharpest way to prove that is to hand it a caller summary it must not trust: 99 qualifying
+    // websites claimed, zero source records supplied. A pass that echoed the first pass, or
+    // read report.completeness, would answer "Yes" here.
+    const lying = evaluateReadiness(
+      completeEntity({ kind: 'second_pass', websiteQualifying: 99, pressQualifying: 99, sources: [] }),
+    );
+    const answers = lying.secondPassAnswers!;
+    const websiteQ = answers.find((a) => a.question.includes('Do 5 or more websites qualify'));
+    const pressQ = answers.find((a) => a.question.includes('Do 4 or more press releases qualify'));
+    const supportQ = answers.find((a) => a.question.includes('sufficient supporting public sources'));
+
+    expect(websiteQ?.pass).toBe(false);
+    expect(pressQ?.pass).toBe(false);
+    expect(supportQ?.pass).toBe(false);
+    expect(websiteQ?.detail).toContain('0 of 5');
   });
 
-  it('can block an entity that the individual checks had already passed', () => {
-    const first = evaluateReadiness(completeEntity({ kind: 'standard' }));
-    expect(first.status).toBe('ready');
+  it('re-derives conflicts and ambiguity from the records rather than the first pass verdict', () => {
+    const withOpenConflict = evaluateReadiness(
+      completeEntity({
+        kind: 'second_pass',
+        conflicts: [conflict({ severity: 'blocking', status: 'open' })],
+      }),
+    );
+    const q = withOpenConflict.secondPassAnswers!.find((a) =>
+      a.question.includes('unresolved contradictions or ambiguity'),
+    );
+    expect(q?.pass).toBe(false);
 
-    const second = evaluateReadiness(completeEntity({ kind: 'second_pass' }));
-    if (second.status === 'blocked') {
-      expect(second.blockingIssues.some((b) => b.code === 'second_pass')).toBe(true);
+    const resolved = evaluateReadiness(
+      completeEntity({
+        kind: 'second_pass',
+        conflicts: [conflict({ severity: 'blocking', status: 'resolved_by_user' })],
+      }),
+    );
+    const ok = resolved.secondPassAnswers!.find((a) =>
+      a.question.includes('unresolved contradictions or ambiguity'),
+    );
+    expect(ok?.pass).toBe(true);
+  });
+
+  it('never reports 100% while blocked', () => {
+    // The second pass can flip a first-pass READY verdict to blocked. When it does, the score
+    // must be re-clamped and the label rebuilt. A report reading "100% — BLOCKED" is exactly the
+    // dishonest state the product forbids.
+    const perturbations = [
+      completeEntity({ kind: 'second_pass', claims: completeClaims().map((c) => ({ ...c, origin: 'user', user_confirmed: false })) }),
+      completeEntity({ kind: 'second_pass', ambiguities: [ambiguity({ severity: 'blocking', status: 'open' })] }),
+      completeEntity({ kind: 'second_pass', conflicts: [conflict({ severity: 'blocking', status: 'open' })] }),
+    ];
+
+    for (const input of perturbations) {
+      const report = evaluateReadiness(input);
+      if (report.status === 'blocked') {
+        expect(report.score).toBeLessThan(100);
+        expect(report.label).not.toContain('100%');
+        expect(report.label).not.toContain('100');
+      }
     }
-    // Whether or not it blocks, the second pass must not be able to report READY with a
-    // failed answer of its own.
-    const failed = second.secondPassAnswers!.filter((a) => !a.pass);
-    if (second.status === 'ready') expect(failed).toHaveLength(0);
+
+    // And the specific historical defect, asserted directly rather than conditionally.
+    const blocked = perturbations.map(evaluateReadiness).filter((r) => r.status === 'blocked');
+    expect(blocked.length).toBeGreaterThan(0);
+    for (const report of blocked) {
+      expect(report.score).toBeLessThanOrEqual(99);
+    }
+  });
+
+  it('blocks when there is too little material for a whole-entity review to mean anything', () => {
+    // The question "was the entire entity re-reviewed" used to hardcode `pass: true` and could
+    // never fail for any input — a self-certification rather than a check. It now measures the
+    // breadth of material actually re-examined.
+    const empty = evaluateReadiness(
+      completeEntity({
+        kind: 'second_pass',
+        claims: [],
+        sources: [],
+        photos: [],
+        identityLinks: [],
+        conflicts: [],
+        ambiguities: [],
+      }),
+    );
+    const breadth = empty.secondPassAnswers!.find((a) => a.question.includes('re-examined'));
+    expect(breadth).toBeDefined();
+    expect(breadth!.pass).toBe(false);
+  });
+
+  it('cannot report READY while any of its own answers failed', () => {
+    const inputs = [
+      completeEntity({ kind: 'second_pass' }),
+      completeEntity({ kind: 'second_pass', websiteQualifying: 2 }),
+      completeEntity({ kind: 'second_pass', photosQualifying: 1 }),
+      completeEntity({ kind: 'second_pass', claims: completeClaims().map((c) => ({ ...c, origin: 'user', user_confirmed: false })) }),
+      completeEntity({ kind: 'second_pass', ambiguities: [ambiguity({ severity: 'blocking', status: 'open' })] }),
+    ];
+    for (const input of inputs) {
+      const report = evaluateReadiness(input);
+      const failed = report.secondPassAnswers!.filter((a) => !a.pass);
+      if (report.status === 'ready') expect(failed).toHaveLength(0);
+      if (failed.length > 0) expect(report.status).not.toBe('ready');
+    }
   });
 
   it('does not block an entity that has no self-asserted-only claims', () => {

@@ -168,7 +168,6 @@ export async function validateImage(
       reason: 'The image file is incomplete or corrupt, so it cannot be published.',
     };
   }
-  const mime = `image/${meta.format === 'jpeg' ? 'jpeg' : meta.format}`;
   if (input.buffer.length < MIN_PHOTO_BYTES) {
     return { ok: false, reason: `The file is only ${(input.buffer.length / 1024).toFixed(0)} KB, which is too small to be a usable photograph.` };
   }

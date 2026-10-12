@@ -39,7 +39,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   }
 
   const cfg = config();
-  const portfolioDir = path.join(cfg.repoRoot, 'storage', 'portfolios');
+  // `config().portfolioDir` is already absolute; using it directly honours NEXORA_PORTFOLIO_DIR
+  // instead of hardcoding storage/portfolios under the repository root.
+  const portfolioDir = cfg.portfolioDir;
   await mkdir(portfolioDir, { recursive: true });
 
   const results: { label: string; ok: boolean; detail: string }[] = [];

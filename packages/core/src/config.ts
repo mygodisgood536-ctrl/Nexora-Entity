@@ -55,6 +55,8 @@ export interface AppConfig {
   portfolioDir: string;
   sessionCookieName: string;
   sessionTtlDays: number;
+  /** Whether the session cookie is issued with the `Secure` attribute. True by default in production. */
+  cookieSecure: boolean;
   secretKey: string;
   /** Vercel. Optional. When absent the platform uses its own first-party hosting tier. */
   vercelToken: string | undefined;
@@ -64,6 +66,11 @@ export interface AppConfig {
   opencodeBinary: string | undefined;
   opencodeHost: string;
   opencodePort: number;
+  /** Full base URL of the bridge, e.g. `https://opencode.internal.example`. Takes precedence over host/port. */
+  opencodeUrl: string | undefined;
+  /** Bearer token presented to the bridge. Required once the bridge is not on loopback. */
+  opencodeToken: string | undefined;
+  /** Whether local tooling may start a managed OpenCode process. The web application never does. */
   opencodeManaged: boolean;
   opencodeRequestTimeoutMs: number;
   opencodeProbeTimeoutMs: number;
@@ -103,6 +110,18 @@ function load(): AppConfig {
     portfolioDir: resolveDir([process.env.NEXORA_PORTFOLIO_DIR], path.join('storage', 'portfolios')),
     sessionCookieName: process.env.NEXORA_SESSION_COOKIE ?? 'nexora_session',
     sessionTtlDays: int(process.env.NEXORA_SESSION_TTL_DAYS, 30),
+    /**
+     * Whether the session cookie carries `Secure`.
+     *
+     * Defaults to true whenever `NODE_ENV=production`, so a production deployment cannot silently
+     * ship a session cookie without the flag just because `NEXORA_PLATFORM_ORIGIN` was left unset.
+     * It is overridable only through an explicit `NEXORA_COOKIE_SECURE`, which exists so that
+     * someone can deliberately run a production build behind plain HTTP in a test environment.
+     */
+    cookieSecure: bool(
+      process.env.NEXORA_COOKIE_SECURE,
+      isProd || (process.env.NEXORA_PLATFORM_ORIGIN ?? '').startsWith('https://'),
+    ),
     secretKey: process.env.NEXORA_SECRET_KEY ?? 'nexora-entity-development-secret-change-me',
     vercelToken: process.env.VERCEL_TOKEN ?? process.env.NEXORA_VERCEL_TOKEN ?? undefined,
     vercelTeamId: process.env.VERCEL_TEAM_ID ?? process.env.NEXORA_VERCEL_TEAM_ID ?? undefined,
@@ -110,6 +129,16 @@ function load(): AppConfig {
     opencodeBinary: process.env.OPENCODE_BIN ?? process.env.NEXORA_OPENCODE_BIN ?? undefined,
     opencodeHost: process.env.NEXORA_OPENCODE_HOST ?? '127.0.0.1',
     opencodePort: int(process.env.NEXORA_OPENCODE_PORT, 4137),
+    /**
+     * Full base URL of the OpenCode bridge, e.g. `https://opencode.internal.example`.
+     *
+     * This is the setting that makes a cloud-hosted bridge possible: set it and the application
+     * attaches over HTTPS instead of looking for a process on loopback. It takes precedence over
+     * host/port.
+     */
+    opencodeUrl: process.env.NEXORA_OPENCODE_URL ?? undefined,
+    /** Bearer token presented to the bridge. Required once the bridge is not on loopback. */
+    opencodeToken: process.env.NEXORA_OPENCODE_TOKEN ?? undefined,
     opencodeManaged: bool(process.env.NEXORA_OPENCODE_MANAGED, true),
     opencodeRequestTimeoutMs: int(process.env.NEXORA_OPENCODE_TIMEOUT_MS, 180_000),
     opencodeProbeTimeoutMs: int(process.env.NEXORA_OPENCODE_PROBE_MS, 60_000),

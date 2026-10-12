@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ActionableErrorShape } from '@nexora/core';
 
 interface Check {
@@ -57,6 +58,7 @@ const OUTCOME_LABEL: Record<Check['outcome'], { label: string; cls: string }> = 
 export default function ReadinessBoard({ report, entityId }: { report: Report; entityId: string }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<ActionableErrorShape | null>(null);
+  const router = useRouter();
   const ready = report.status === 'ready';
   const answered = report.secondPassAnswers ?? [];
 
@@ -70,7 +72,9 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
         setError(body.error ?? null);
         return;
       }
-      window.location.reload();
+      // `router.refresh()` re-renders the server components with the new run already recorded,
+      // instead of a full document reload which discards scroll position and re-runs everything.
+      router.refresh();
     } catch {
       setError({
         code: 'network',

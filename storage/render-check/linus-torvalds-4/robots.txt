@@ -1,3 +1,0 @@
-# This Entity Website is not published yet, so it is not available to crawlers.
-User-agent: *
-Disallow: /

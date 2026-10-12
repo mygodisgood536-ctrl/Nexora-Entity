@@ -67,6 +67,20 @@ export interface ReadinessInput {
   liveDeploymentTarget: string | null;
 }
 
+/** One answer from the mandatory whole-entity second pass. */
+export interface SecondPassAnswer {
+  /** Stable identifier, so a blocking answer can be traced back to the question that produced it. */
+  key?: string;
+  question: string;
+  answer: string;
+  /** What the person should do about it. Only meaningful when `pass` is false. */
+  action?: string;
+  pass: boolean;
+  detail: string;
+  /** Which readiness check this question belongs to, when it maps to one. */
+  checkId?: ReadinessCheckId;
+}
+
 export interface ReadinessReport {
   kind: ReadinessRunKind;
   status: ReadinessStatus;
@@ -75,7 +89,7 @@ export interface ReadinessReport {
   checks: CheckResult[];
   blockingIssues: BlockingIssue[];
   warnings: { code: string; title: string; detail: string }[];
-  secondPassAnswers?: { question: string; answer: string; pass: boolean; detail: string }[];
+  secondPassAnswers?: SecondPassAnswer[];
   summary: string;
   completeness: CompletenessResult;
   disclaimer: string;
@@ -471,27 +485,31 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessReport {
 
   const qualifyingPhotos = input.photos.filter((p) => p.qualifies);
   const rejectedPhotoCount = input.photos.length - qualifyingPhotos.length;
+  // Recomputed exactly as the website and press minimums above: the caller's summary number is
+  // capped by the photo records actually in front of the gate, so a caller reporting four
+  // qualifying photos while supplying none cannot pass.
+  const photosQualifying = Math.min(input.photosQualifying, qualifyingPhotos.length);
   checks.push(
     check(
       'photos_minimum_4',
       'Four qualifying photos',
-      input.photosQualifying >= 4,
-      `${input.photosQualifying} of 4 qualifying photos. ${rejectedPhotoCount} uploaded image${rejectedPhotoCount === 1 ? ' was' : 's were'} rejected as invalid or duplicate. ${EVIDENCE_MINIMUMS_NOTICE}`,
+      photosQualifying >= 4,
+      `${photosQualifying} of 4 qualifying photos. ${rejectedPhotoCount} uploaded image${rejectedPhotoCount === 1 ? ' was' : 's were'} rejected as invalid or duplicate. ${EVIDENCE_MINIMUMS_NOTICE}`,
       { stageKey: 'Q_photos' },
     ),
   );
-  if (input.photosQualifying < 4) {
+  if (photosQualifying < 4) {
     const rejectedPhotos = input.photos.filter((p) => !p.qualifies);
     const first = rejectedPhotos[0];
     blockingIssues.push({
       code: 'photos_minimum_4',
-      title: `Only ${input.photosQualifying} of 4 qualifying photos`,
+      title: `Only ${photosQualifying} of 4 qualifying photos`,
       detail: `Each upload is checked for validity, resolution and duplication. ${EVIDENCE_MINIMUMS_NOTICE}`,
       where: { stageKey: 'Q_photos' },
       action:
         first && first.disqualify_reasons?.[0]
           ? `This photo was not counted: ${first.disqualify_reasons[0]}`
-          : `Upload ${4 - input.photosQualifying} more photo${4 - input.photosQualifying === 1 ? '' : 's'}.`,
+          : `Upload ${4 - photosQualifying} more photo${4 - photosQualifying === 1 ? '' : 's'}.`,
       actionHref: '/app/stages/Q_photos',
       checkId: 'photos_minimum_4',
     });
@@ -804,13 +822,13 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessReport {
   let score = Math.round((earned / TOTAL_WEIGHT) * 100);
 
   const uniqueBlocking = dedupeBlocking(blockingIssues);
-  let status: ReadinessStatus = uniqueBlocking.length > 0 ? 'blocked' : score >= 100 ? 'ready' : 'blocked';
+  const status: ReadinessStatus = uniqueBlocking.length > 0 ? 'blocked' : score >= 100 ? 'ready' : 'blocked';
   if (status === 'ready' && score < 100) score = 100;
   if (status === 'blocked') score = Math.min(score, 99);
 
   const summary =
     status === 'ready'
-      ? `ENTITY READINESS: 100% - READY. Every blocking check passed: the entity is complete and internally coherent against the Nexora Entity Readiness Standard, with ${websiteQualifying} qualifying websites, ${pressQualifying} qualifying press releases and ${input.photosQualifying} qualifying photos.`
+      ? `ENTITY READINESS: 100% - READY. Every blocking check passed: the entity is complete and internally coherent against the Nexora Entity Readiness Standard, with ${websiteQualifying} qualifying websites, ${pressQualifying} qualifying press releases and ${photosQualifying} qualifying photos.`
       : `ENTITY READINESS: ${score}% - BLOCKED. ${uniqueBlocking.length} blocking issue${uniqueBlocking.length === 1 ? '' : 's'} must be resolved before this entity can be published.`;
 
   const report: ReadinessReport = {
@@ -832,16 +850,21 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessReport {
     const failed = report.secondPassAnswers.filter((a) => !a.pass);
     if (failed.length > 0 && report.status === 'ready') {
       report.status = 'blocked';
+      // A whole-entity review that fails must never leave a "100% — BLOCKED" label on screen.
+      // The score is re-clamped and the label and summary are rebuilt together, so the displayed
+      // figure always agrees with the displayed status.
+      report.score = Math.min(report.score, 99);
       report.label = readinessLabel(report.score, 'blocked');
+      report.summary = `ENTITY READINESS: ${report.score}% - BLOCKED. The complete whole-entity review found ${failed.length} issue${failed.length === 1 ? '' : 's'} that the individual checks did not.`;
       report.blockingIssues = [
         ...report.blockingIssues,
-        ...failed.slice(0, 3).map((a) => ({
-          code: 'second_pass',
+        ...failed.slice(0, 3).map((a, i) => ({
+          code: `second_pass:${a.key ?? i}`,
           title: 'Complete review found something the individual checks missed',
           detail: a.detail,
           where: {},
-          action: a.answer,
-          checkId: 'material_completeness' as ReadinessCheckId,
+          action: a.action ?? 'Resolve the issue the complete review identified above.',
+          checkId: (a.checkId ?? 'material_completeness') as ReadinessCheckId,
         })),
       ];
     }
@@ -872,104 +895,161 @@ function dedupeBlocking(issues: BlockingIssue[]): BlockingIssue[] {
   return out;
 }
 
-/** The mandatory complete second pass: "Do I understand this person?" */
-function runSecondPassQuestions(
-  input: ReadinessInput,
-  report: ReadinessReport,
-): { question: string; answer: string; pass: boolean; detail: string }[] {
-  const q: { question: string; answer: string; pass: boolean; detail: string }[] = [];
-  const c = report.completeness;
+/**
+ * The mandatory complete second pass: "Do I understand this person?"
+ *
+ * This is a genuinely independent re-evaluation, not a restatement of the first pass. It works
+ * from the raw evidence records in `input` and re-derives its own verdicts, deliberately reading
+ * neither `report.checks` nor `report.blockingIssues` for anything it can compute itself. That
+ * separation is the whole point: a second pass that echoes the first pass's conclusions cannot
+ * catch an interaction between facts that an individual field check missed, and would merely
+ * restate the first pass with extra sentences.
+ *
+ * Every answer is derived from data. Nothing here asserts that a review happened; the review
+ * demonstrably happened because each verdict below was recomputed from the evidence.
+ */
+function runSecondPassQuestions(input: ReadinessInput, report: ReadinessReport): SecondPassAnswer[] {
+  const q: SecondPassAnswer[] = [];
+
+  // ── Independent re-derivation of the hard evidence minimums ────────────────────────────────
+  // Recomputed from the source and photo records, capped by the caller's summary exactly as the
+  // gate itself does, so the second pass cannot be satisfied by a summary number alone.
+  const sites = input.sources.filter((s) => s.qualifies_websites && !s.is_duplicate_of);
+  const websiteCount = Math.min(input.websiteQualifying, sites.length);
+  const press = input.sources.filter((s) => s.qualifies_press && !s.is_duplicate_of);
+  const pressCount = Math.min(input.pressQualifying, press.length);
+  const pressGroups = new Set(press.map((s) => s.independence_group ?? s.id)).size;
+  const photoCount = Math.min(input.photosQualifying, input.photos.filter((p) => p.qualifies).length);
+
+  // Conflicts and ambiguity re-derived from the underlying records rather than from the
+  // first pass's blocking list.
+  const openConflicts = input.conflicts.filter((x) => x.status === 'open');
+  const blockingConflicts = openConflicts.filter((x) => x.severity === 'blocking');
+  const openAmbiguities = input.ambiguities.filter((a) => a.status === 'open');
+  const blockingAmbiguities = openAmbiguities.filter((a) => a.severity === 'blocking');
 
   const knowWho = has(input.claims, 'identity.primaryName', 2) && has(input.claims, 'about.biography', 60);
   q.push({
+    key: 'identity',
+    checkId: 'identity_core',
     question: 'Do I know who this person is?',
     answer: knowWho ? 'Yes' : 'No',
+    action: 'Complete the Basic identity and About stages with a full public name and a substantive biography.',
     pass: knowWho,
     detail: knowWho
       ? `Primary name and biography are both present (${input.claims.find((x) => x.attribute_key === 'identity.primaryName')?.value_text}).`
       : 'A primary name and a substantive biography are both required to know who this person is.',
   });
 
-  const openBlockingAmbiguities = input.ambiguities.filter((a) => a.status === 'open' && a.severity === 'blocking');
+  const distinguishable = blockingAmbiguities.length === 0 && blockingConflicts.length === 0;
   q.push({
+    key: 'distinguishability',
+    checkId: 'ambiguity_resolved',
     question: 'Can I distinguish them from other people?',
-    answer: openBlockingAmbiguities.length === 0 ? 'Yes' : 'No',
-    pass: openBlockingAmbiguities.length === 0,
+    answer: distinguishable ? 'Yes' : 'No',
+    action: 'Resolve the open identity contradictions and ambiguity concerns listed above.',
+    pass: distinguishable,
     detail:
-      input.ambiguities.filter((a) => a.status === 'open').length === 0
-        ? 'No open ambiguity concerns.'
-        : `${input.ambiguities.filter((a) => a.status === 'open').length} ambiguity concern(s) remain open, ${openBlockingAmbiguities.length} of them blocking.`,
+      openAmbiguities.length === 0 && openConflicts.length === 0
+        ? 'No open ambiguity concerns or identity contradictions.'
+        : `${openConflicts.length} open conflict(s) (${blockingConflicts.length} blocking) and ${openAmbiguities.length} open ambiguity concern(s) (${blockingAmbiguities.length} blocking).`,
   });
 
   const aliasCount = countOf(input.claims, 'identity.alias');
   q.push({
+    key: 'aliases',
+    checkId: 'name_variants',
     question: 'Do I understand their legitimate names and aliases?',
     answer: aliasCount > 0 ? 'Yes' : 'Partial',
+    action: 'Add any other names, nicknames or professional names people use for you.',
     pass: aliasCount > 0,
     detail: `${aliasCount} alternate name${aliasCount === 1 ? '' : 's'} recorded.`,
   });
 
   const professionCount = countOf(input.claims, 'professional.profession');
   const titleCount = countOf(input.claims, 'professional.title');
+  const knowsCurrentRole = professionCount > 0 || titleCount > 0;
   q.push({
+    key: 'current_role',
+    checkId: 'current_profession',
     question: 'Do I understand what they currently do?',
-    answer: professionCount > 0 || titleCount > 0 ? 'Yes' : 'No',
-    pass: professionCount > 0 || titleCount > 0,
+    answer: knowsCurrentRole ? 'Yes' : 'No',
+    action: 'Complete the Professional identity stage with your current profession and roles.',
+    pass: knowsCurrentRole,
     detail: `${professionCount} profession(s), ${titleCount} title(s), current organisation: ${has(input.claims, 'professional.currentCompany', 1) ? 'yes' : 'no'}.`,
   });
 
   const careerCount = attrClaims(input.claims, 'career.');
   const eduCount = countOf(input.claims, 'education.qualification');
   q.push({
+    key: 'history',
+    checkId: 'career_history',
     question: 'Do I understand important professional or educational history where relevant?',
     answer: careerCount > 0 || eduCount > 0 ? 'Yes' : 'Partial',
+    action: 'Add your work history or education so dated facts can be told apart from contradictions.',
     pass: careerCount > 0 || eduCount > 0,
     detail: `${careerCount} role(s), ${eduCount} qualification(s).`,
   });
 
   const orgCount = attrClaims(input.claims, 'organizations.');
   const projCount = countOf(input.claims, 'projects.project');
+  const productCount = countOf(input.claims, 'products.product') + countOf(input.claims, 'products.service');
   q.push({
+    key: 'relationships',
+    checkId: 'organizations_projects',
     question: 'Do I understand their organisations, projects, products, services and relationships?',
-    answer: orgCount + projCount > 0 ? 'Yes' : 'Partial',
-    pass: orgCount + projCount > 0,
-    detail: `${orgCount} organisation link(s), ${projCount} project(s), ${countOf(input.claims, 'products.product') + countOf(input.claims, 'products.service')} product or service entr${countOf(input.claims, 'products.product') + countOf(input.claims, 'products.service') === 1 ? 'y' : 'ies'}.`,
+    answer: orgCount + projCount + productCount > 0 ? 'Yes' : 'Partial',
+    action: 'Add the organisations, projects, products or services you want connected to your name.',
+    pass: orgCount + projCount + productCount > 0,
+    detail: `${orgCount} organisation link(s), ${projCount} project(s), ${productCount} product or service entr${productCount === 1 ? 'y' : 'ies'}.`,
   });
 
-  const minimaMet =
-    c.evidenceMinimums.websites.met && c.evidenceMinimums.pressReleases.met && c.evidenceMinimums.photos.met;
+  const minimaMet = websiteCount >= 5 && pressCount >= 4 && photoCount >= 4;
   q.push({
+    key: 'supporting_sources',
+    checkId: 'public_sources',
     question: 'Are there sufficient supporting public sources?',
     answer: minimaMet ? 'Yes' : 'No',
+    action: 'Bring the evidence minimums up to 5 qualifying websites, 4 qualifying press releases and 4 qualifying photos.',
     pass: minimaMet,
-    detail: `Websites ${c.evidenceMinimums.websites.qualifying}/5, press releases ${c.evidenceMinimums.pressReleases.qualifying}/4 across ${c.evidenceMinimums.pressReleases.independentGroups} independent groups, photos ${c.evidenceMinimums.photos.qualifying}/4. ${EVIDENCE_MINIMUMS_NOTICE}`,
+    detail: `Websites ${websiteCount}/5, press releases ${pressCount}/4 across ${pressGroups} independent groups, photos ${photoCount}/4. ${EVIDENCE_MINIMUMS_NOTICE}`,
   });
 
   q.push({
+    key: 'websites_minimum_5',
+    checkId: 'websites_minimum_5',
     question: 'Do 5 or more websites qualify?',
-    answer: c.evidenceMinimums.websites.met ? 'Yes' : 'No',
-    pass: c.evidenceMinimums.websites.met,
-    detail: `${c.evidenceMinimums.websites.qualifying} of 5 qualify. Dead links, unrelated pages and duplicates of the same site do not count.`,
+    answer: websiteCount >= 5 ? 'Yes' : 'No',
+    action: `Add ${Math.max(0, 5 - websiteCount)} more qualifying website${5 - websiteCount === 1 ? '' : 's'}.`,
+    pass: websiteCount >= 5,
+    detail: `${websiteCount} of 5 qualify. Dead links, unrelated pages and duplicates of the same site do not count.`,
   });
 
-  const pressGroups = c.evidenceMinimums.pressReleases.independentGroups;
   q.push({
+    key: 'press_minimum_4',
+    checkId: 'press_minimum_4',
     question: 'Do 4 or more press releases qualify and provide meaningful independent support?',
-    answer: c.evidenceMinimums.pressReleases.met ? (pressGroups >= 4 ? 'Yes' : 'Partly') : 'No',
-    pass: c.evidenceMinimums.pressReleases.met,
-    detail: `${c.evidenceMinimums.pressReleases.qualifying} of 4 qualify across ${pressGroups} independent source group(s). Four copies of one release count once.`,
+    answer: pressCount >= 4 ? (pressGroups >= 4 ? 'Yes' : 'Partly') : 'No',
+    action: `Add ${Math.max(0, 4 - pressCount)} more qualifying press release${4 - pressCount === 1 ? '' : 's'} from independent publications.`,
+    pass: pressCount >= 4,
+    detail: `${pressCount} of 4 qualify across ${pressGroups} independent source group(s). Four copies of one release count once.`,
   });
 
   q.push({
+    key: 'photos_minimum_4',
+    checkId: 'photos_minimum_4',
     question: 'Do 4 or more photos qualify?',
-    answer: c.evidenceMinimums.photos.met ? 'Yes' : 'No',
-    pass: c.evidenceMinimums.photos.met,
-    detail: `${c.evidenceMinimums.photos.qualifying} of 4 qualify. Each upload was checked for validity, resolution and duplication.`,
+    answer: photoCount >= 4 ? 'Yes' : 'No',
+    action: `Upload ${Math.max(0, 4 - photoCount)} more qualifying photo${4 - photoCount === 1 ? '' : 's'}.`,
+    pass: photoCount >= 4,
+    detail: `${photoCount} of 4 qualify. Each upload was checked for validity, resolution and duplication.`,
   });
 
   const profileSources = input.sources.filter((s) => s.platform !== null);
   const inspectedProfiles = profileSources.filter((s) => s.inspection_status === 'inspected');
   q.push({
+    key: 'profile_inspection',
+    checkId: 'social_inspection',
     question: 'Have supported supplied profiles been inspected where possible?',
     answer:
       profileSources.length === 0
@@ -977,6 +1057,7 @@ function runSecondPassQuestions(
         : inspectedProfiles.length === profileSources.length
           ? 'Yes'
           : 'Partly',
+    action: 'Supply at least one public profile that Nexora Entity is able to read.',
     pass: profileSources.length === 0 || inspectedProfiles.length > 0,
     detail:
       profileSources.length === 0
@@ -985,15 +1066,14 @@ function runSecondPassQuestions(
   });
 
   const portfolioOk = input.portfolioFiles.filter((f) => f.extraction_status === 'extracted').length;
+  const portfolioFine = input.portfolioFiles.length === 0 || (portfolioOk > 0 && input.portfolioDiscoveriesPending === 0);
   q.push({
+    key: 'portfolio',
+    checkId: 'portfolio_understood',
     question: 'Is supplied portfolio information understood and properly attributed?',
-    answer:
-      input.portfolioFiles.length === 0
-        ? 'Not applicable'
-        : portfolioOk > 0 && input.portfolioDiscoveriesPending === 0
-          ? 'Yes'
-          : 'Partly',
-    pass: input.portfolioFiles.length === 0 || (portfolioOk > 0 && input.portfolioDiscoveriesPending === 0),
+    answer: input.portfolioFiles.length === 0 ? 'Not applicable' : portfolioFine ? 'Yes' : 'Partly',
+    action: 'Review the items Nexora Entity discovered in your portfolio so they can be accepted or rejected.',
+    pass: portfolioFine,
     detail:
       input.portfolioFiles.length === 0
         ? 'No portfolio uploaded.'
@@ -1001,69 +1081,117 @@ function runSecondPassQuestions(
   });
 
   q.push({
+    key: 'contradictions',
+    checkId: 'conflicts_resolved',
     question: 'Are there unresolved contradictions or ambiguity?',
-    answer: report.blockingIssues.length === 0 ? 'No' : `Yes: ${report.blockingIssues.length} blocking issue(s)`,
-    pass: report.blockingIssues.length === 0,
+    answer: blockingConflicts.length + blockingAmbiguities.length === 0 ? 'No' : `Yes: ${blockingConflicts.length + blockingAmbiguities.length} blocking issue(s)`,
+    action: 'Review the conflicts and ambiguity concerns, then confirm the correct information.',
+    pass: blockingConflicts.length + blockingAmbiguities.length === 0,
     detail:
-      report.blockingIssues.length === 0
-        ? 'No open contradictions or ambiguity concerns remain.'
-        : report.blockingIssues.map((b) => b.title).join('; '),
+      blockingConflicts.length + blockingAmbiguities.length === 0
+        ? 'No open blocking contradictions or ambiguity concerns remain.'
+        : [
+            ...blockingConflicts.map((x) => x.description),
+            ...blockingAmbiguities.map((a) => a.description),
+          ].join('; '),
   });
 
-  const selfOnly = input.claims.filter((c) => c.origin === 'user' && !c.user_confirmed).length;
+  const selfOnly = input.claims.filter((x) => x.origin === 'user' && !x.user_confirmed).length;
   q.push({
+    key: 'unsupported_claims',
+    checkId: 'support_strength',
     question: 'Is important information unsupported or stale?',
     answer: selfOnly > 0 ? 'No' : 'Yes',
-    // Was hardcoded to false, so this question failed on every run regardless of the data.
-    // With zero unconfirmed self-asserted claims â€” the state a well-sourced entity should
-    // reach â€” the second pass still blocked the entity at "100% â€” BLOCKED" and raised a
-    // blocking issue whose own text reported that nothing rested on the person's assertion.
-    // The flag must follow the data, not override it.
+    // Must follow the data. An earlier version hardcoded this to false, which blocked every
+    // entity at "100% — BLOCKED" while the blocking text itself reported that nothing rested
+    // on the person's assertion.
+    action: 'Confirm the claims that currently rest only on your own assertion, or supply a source for them.',
     pass: selfOnly === 0,
-    detail: selfOnly > 0
-      ? `${selfOnly} claim(s) rest on the person` + "'" + `s own assertion only. These are kept as user-provided and are never presented as independently verified.`
-      : "No claim rests on the person's own assertion alone. Everything asserted is supported by an inspected source.",
+    detail:
+      selfOnly > 0
+        ? `${selfOnly} claim(s) rest on the person's own assertion only. These are kept as user-provided and are never presented as independently verified.`
+        : "No claim rests on the person's own assertion alone. Everything asserted is supported by an inspected source.",
   });
 
+  // Website accuracy and machine-readable coherence cannot be recomputed here: they are
+  // properties of a built artefact, and re-reading the first pass's result is the correct,
+  // non-circular thing to do for them. They are labelled so the reader knows where the answer
+  // came from.
   const accuracy = report.checks.find((k) => k.id === 'website_accuracy');
   q.push({
+    key: 'website_accuracy',
+    checkId: 'website_accuracy',
     question: 'Is the public Entity Website accurate and complete?',
     answer: accuracy?.outcome === 'pass' ? 'Yes' : 'Not yet',
+    action: 'Resolve what the published-site validation reported before publishing.',
     pass: accuracy?.outcome === 'pass',
-    detail: accuracy?.detail ?? '',
+    detail: `${accuracy?.detail ?? 'No published-site validation result was available.'} (carried from the artefact validation in the first pass)`,
   });
 
   const machine = report.checks.find((k) => k.id === 'machine_readable');
   q.push({
+    key: 'machine_readable',
+    checkId: 'machine_readable',
     question: 'Is the machine-readable entity representation coherent?',
     answer: machine?.outcome === 'pass' ? 'Yes' : 'Not yet',
+    action: 'Add the missing structured-entity information listed by the readiness board.',
     pass: machine?.outcome === 'pass',
-    detail: machine?.detail ?? '',
+    detail: `${machine?.detail ?? 'No structured-data result was available.'} (carried from the structured-data check in the first pass)`,
   });
 
   q.push({
+    key: 'material_completeness',
+    checkId: 'material_completeness',
     question: 'Is any material information still missing?',
-    answer: c.materialGaps.length === 0 ? 'No' : `Yes: ${c.materialGaps.length} gap(s)`,
-    pass: c.materialGaps.length === 0,
-    detail: c.materialGaps.length === 0 ? 'Nothing material is missing.' : c.materialGaps.map((g) => g.what).join(' | '),
+    answer: report.completeness.materialGaps.length === 0 ? 'No' : `Yes: ${report.completeness.materialGaps.length} gap(s)`,
+    action: 'Complete the stages listed below so the entity can be understood as a whole.',
+    pass: report.completeness.materialGaps.length === 0,
+    detail:
+      report.completeness.materialGaps.length === 0
+        ? 'Nothing material is missing.'
+        : report.completeness.materialGaps.map((g) => g.what).join(' | '),
+  });
+
+  /**
+   * What the previous pass could not settle.
+   *
+   * This replaces a question that used to hardcode `pass: true` and assert "Yes — the entire
+   * entity was re-reviewed", which could never fail for any input and was therefore a
+   * self-certification rather than a check. It now reports an honest, derived measurement: the
+   * breadth of material actually re-examined by the questions above, and the number of
+   * corrections since the parent run. It fails when the second pass examined too little to be
+   * meaningfully different from the first — which is the condition worth gating on.
+   */
+  const examined = sites.length + press.length + input.photos.length + input.claims.length + input.identityLinks.length;
+  const substantialReview = examined >= 10;
+  q.push({
+    key: 'review_breadth',
+    question:
+      'Was the entire entity re-examined rather than only the last corrected field? ' +
+      `(${input.correctionsSinceParent} correction(s) since the previous run)`,
+    answer: substantialReview ? 'Yes' : 'No',
+    action: 'There is not enough recorded material for a whole-entity review to mean anything. Add your evidence first.',
+    pass: substantialReview,
+    detail:
+      `This pass independently re-derived its verdicts from ${input.claims.length} claim(s), ${input.sources.length} source(s) ` +
+      `(${websiteCount} qualifying website, ${pressCount} qualifying press release across ${pressGroups} independent group(s)), ` +
+      `${input.photos.length} photo(s), ${input.identityLinks.length} identity relationship(s), ${openConflicts.length} open conflict(s) and ` +
+      `${openAmbiguities.length} open ambiguity concern(s) — not from the first pass's conclusions. ` +
+      (substantialReview
+        ? 'That is enough material for a whole-entity review to be meaningful.'
+        : `Only ${examined} record(s) were available, which is too few for a whole-entity review to be meaningful.`),
   });
 
   q.push({
-    question: `Was the entire entity re-reviewed rather than just the last corrected field? (${input.correctionsSinceParent} correction(s) since the previous run)`,
-    answer: 'Yes',
-    pass: true,
-    detail: `This review re-examined all ${input.claims.length} claims, ${input.sources.length} sources, ${input.photos.length} photos, ${input.identityLinks.length} identity relationships, ${input.conflicts.length} conflicts and ${input.ambiguities.length} ambiguity concerns from the beginning.`,
-  });
-
-  q.push({
+    key: 'whole_entity',
     question:
       'If I were a search engine trying to understand this person as one real-world entity, do I fully understand them as a whole?',
-    answer: report.status === 'ready' ? 'Yes' : 'Not yet',
-    pass: report.status === 'ready',
-    detail:
-      report.status === 'ready'
-        ? "On Nexora Entity's own Entity Readiness Standard, the entity is complete and internally coherent."
-        : `Not yet: ${report.blockingIssues.length} blocking issue(s) remain. This is an internal Nexora Entity analysis. Nexora Entity has no access to, and makes no claim about, any search engine's private internal knowledge graph.`,
+    answer: q.every((a) => a.pass) ? 'Yes' : 'Not yet',
+    action: 'Resolve every question above that did not pass.',
+    pass: q.every((a) => a.pass),
+    detail: q.every((a) => a.pass)
+      ? "On Nexora Entity's own Entity Readiness Standard, the entity is complete and internally coherent."
+      : `${q.filter((a) => !a.pass).length} of ${q.length} whole-entity questions did not pass. This is an internal Nexora Entity analysis. Nexora Entity has no access to, and makes no claim about, any search engine's private internal knowledge graph.`,
   });
 
   return q;

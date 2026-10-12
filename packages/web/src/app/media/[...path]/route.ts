@@ -13,7 +13,8 @@ export const runtime = 'nodejs';
 export async function GET(request: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const { path: segments } = await ctx.params;
   const rel = segments.join('/');
-  const root = path.resolve(config().repoRoot, config().photoDir.replace(/^.*?photos$/i, 'photos'));
+  // `config().photoDir` is already absolute; use it directly so NEXORA_PHOTO_DIR is honoured.
+  const root = path.resolve(config().photoDir);
   const target = path.resolve(root, rel.replace(/^\/+/, ''));
 
   if (!target.startsWith(root) || !existsSync(target) || !statSync(target).isFile()) {

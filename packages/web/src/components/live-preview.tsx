@@ -19,17 +19,20 @@ interface Props {
 export default function LivePreview({ entityId, width = 360, height = 620 }: Props) {
   const [scale, setScale] = useState(1);
   const [loading, setLoading] = useState(true);
+  // A nonce rather than a mutable ref to the iframe's src, so the URL is derived state: changing
+  // entity or refreshing produces a new src without an effect that writes state during render.
+  const [nonce, setNonce] = useState(0);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  const src = `/api/preview/${entityId}${nonce ? `?t=${nonce}` : ''}`;
+
   const reload = useCallback(() => {
     setLoading(true);
-    const url = `/api/preview/${entityId}?t=${Date.now()}`;
-    if (frameRef.current) frameRef.current.src = url;
-  }, [entityId]);
+    setNonce(Date.now());
+  }, []);
 
   useEffect(() => {
-    reload();
     const handler = (e: MessageEvent) => {
       const data = e.data as { type?: string; height?: number } | null;
       if (data?.type === 'nexora:entity-preview-height' && typeof data.height === 'number') {
@@ -39,9 +42,10 @@ export default function LivePreview({ entityId, width = 360, height = 620 }: Pro
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [reload]);
+  }, []);
 
-  // Fit the fixed-width viewport into the available column.
+  // Fit the fixed-width viewport into the available column. ResizeObserver fires once on observe,
+  // so the initial measurement does not need a separate synchronous call here.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -49,7 +53,6 @@ export default function LivePreview({ entityId, width = 360, height = 620 }: Pro
       const available = el.clientWidth;
       setScale(Math.min(1, Math.max(0.28, available / width)));
     };
-    measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
@@ -72,8 +75,11 @@ export default function LivePreview({ entityId, width = 360, height = 620 }: Pro
         <div ref={wrapRef} className="relative overflow-hidden" style={{ background: '#fff' }}>
           {loading ? <div className="nx-skeleton" style={{ height: '20rem', borderRadius: 0 }} /> : null}
           <iframe
+            key={src}
             ref={frameRef}
             title="Entity Website preview"
+            src={src}
+            onLoad={() => setLoading(false)}
             className="nx-preview__frame"
             style={{
               width,

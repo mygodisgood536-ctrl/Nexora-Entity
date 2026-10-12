@@ -86,7 +86,7 @@ describe('ambiguity: a name-only match is a possible collision', () => {
       }),
     );
     expect(a).not.toBeNull();
-    expect(a!.candidates[0].possibleCollision).toBe(true);
+    expect(a!.candidates[0]!.possibleCollision).toBe(true);
   });
 
   it('ignores a collision the person has already decided on', () => {

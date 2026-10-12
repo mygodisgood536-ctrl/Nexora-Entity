@@ -757,11 +757,16 @@ export async function latestReadyRun(entityId: string): Promise<ReadinessRunReco
  * the review, so the count is derived from real resolutions rather than assumed.
  */
 export async function countCorrectionsSince(entityId: string, since: string | null): Promise<number> {
+  // `review_items` has no `updated_at` column, and `'resolved'` is not one of its statuses
+  // (the allowed set is pending/accepted/rejected/applied). The previous query referenced both,
+  // so it would have raised "column updated_at does not exist" the first time it was actually
+  // called. Decisions are timestamped by `decided_at`.
   const row = await queryOne<{ n: number }>(
     since
       ? `SELECT count(*)::int AS n FROM review_items
-         WHERE entity_id = $1 AND status = 'resolved' AND updated_at > $2`
-      : `SELECT count(*)::int AS n FROM review_items WHERE entity_id = $1 AND status = 'resolved'`,
+         WHERE entity_id = $1 AND status IN ('accepted', 'rejected', 'applied') AND decided_at > $2`
+      : `SELECT count(*)::int AS n FROM review_items
+         WHERE entity_id = $1 AND status IN ('accepted', 'rejected', 'applied')`,
     since ? [entityId, since] : [entityId],
   );
   return num(row?.n);
