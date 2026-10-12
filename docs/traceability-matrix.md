@@ -1,5 +1,19 @@
 # Specification traceability matrix
 
+> **Status: STALE as of the Phase 1 audit.** This matrix was written against commit `f16b4cb`.
+> The audit and remediation phase that followed found and fixed defects that change the recorded
+> status of a number of rows — most importantly the guided stages (which were unreachable through
+> the UI), the stage autosave (which reverted completed and skipped stages), the mandatory
+> whole-entity second pass (which restated the first pass instead of re-deriving it), the readiness
+> gate's photo minimum (which trusted the caller), and the production build (which shipped no
+> stylesheets). Several rows marked `partial` below are now complete, and rows marked `complete`
+> were, in some cases, not working at all.
+>
+> **The authoritative current status is [`PHASE-1-COMPLETION-REPORT.md`](PHASE-1-COMPLETION-REPORT.md).**
+> Treat this file as a historical snapshot until it is regenerated. It has been deliberately left
+> unedited rather than partially patched, because selectively updating rows would give a document
+> that appears current and is not.
+
 The authoritative specification is
 `Nexora_Entity_Product_Vision_and_Implementation_Instructions_UPDATED.docx`
 (read in full, including Amendment 2.0). This file is the mechanism by which
