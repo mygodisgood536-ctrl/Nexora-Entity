@@ -34,6 +34,7 @@
     "packages/deploy/src/**/*.ts",
     "packages/web/src/**/*.ts",
     "packages/web/src/**/*.tsx",
+    "packages/*/test/**/*.ts",
     "scripts/**/*.ts",
     "scripts/**/*.mjs"
   ],

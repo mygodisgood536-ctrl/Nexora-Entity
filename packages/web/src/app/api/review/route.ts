@@ -8,10 +8,8 @@ import {
   getConflict,
   getReviewItem,
   resolveConflict,
-  resolveAmbiguity,
   resolveSession,
   updateClaimStatus,
-  updateSourceInspection,
 } from '@nexora/db';
 import { ClaimStatus } from '@nexora/core';
 
@@ -83,13 +81,10 @@ export async function POST(request: Request) {
         await resolve(found.id, decision === 'accepted' ? 'resolved' : 'dismissed', 'Decided by the person.');
         note = decision === 'accepted' ? 'Ambiguity resolved by your confirmation.' : 'Marked as not an ambiguity.';
       }
-      void resolveAmbiguity;
     }
 
     if (item.kind === 'identity_verdict') {
       const { setIdentityUserDecision } = await import('@nexora/db');
-      const link = (item.proposed['url'] as string | undefined) ?? '';
-      void link;
       const { listIdentityLinks } = await import('@nexora/db');
       const links = await listIdentityLinks(entity.id);
       const target = links.find((l) => l.source_id === item.source_id);
@@ -103,7 +98,6 @@ export async function POST(request: Request) {
     }
 
     await decideReviewItem(item.id, decision === 'accepted' ? 'accepted' : 'rejected', note || 'Decided by the person.');
-    void updateSourceInspection;
 
     const updated = await getReviewItem(item.id);
     return NextResponse.json({ ok: true, data: { item: updated, note } });

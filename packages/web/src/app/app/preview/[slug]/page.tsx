@@ -42,7 +42,7 @@ export default async function FullPreviewPage({ params }: { params: Promise<Reco
       <iframe
         title="Entity Website preview"
         src={`/api/preview/${entity.id}`}
-        style={{ width: '100%', height: '85vh', border: 0 }}
+        className="nx-frame"
         sandbox="allow-same-origin"
       />
     </>

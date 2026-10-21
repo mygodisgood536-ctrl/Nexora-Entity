@@ -51,13 +51,11 @@ export default async function PublishPage({
 
   return (
     <main id="main" className="nx-shell py-8">
-      <div className="nx-stack" style={{ gap: '1.25rem' }}>
+      <div className="nx-stack nx-stack--loose">
         <div>
           <p className="nx-eyebrow">Publish</p>
-          <h1 className="nx-title" style={{ marginTop: '0.35rem' }}>
-            {entity.display_name ?? 'This entity'}
-          </h1>
-          <p className="nx-subtitle" style={{ marginTop: '0.5rem' }}>
+          <h1 className="nx-title">{entity.display_name ?? 'This entity'}</h1>
+          <p className="nx-subtitle">
             Your Entity Website is generated from the same design system you see in the preview, validated, then
             published. You do not need a Vercel, GitHub, Git or command-line account — Nexora Entity operates the
             hosting on your behalf.
@@ -113,7 +111,7 @@ export default async function PublishPage({
             {domains.length === 0 ? (
               <p className="nx-help">No address has been provisioned yet. Publishing creates one.</p>
             ) : (
-              <ul className="nx-stack-sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul className="nx-stack-sm nx-list">
                 {domains.map((d) => (
                   <li key={d.id} className="nx-row justify-between text-sm">
                     <span className="min-w-0 truncate">

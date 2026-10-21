@@ -7,6 +7,14 @@ import type { ActionableErrorShape } from '@nexora/core';
 type Value = string | string[];
 type StageData = Record<string, Value>;
 
+/**
+ * How many portfolio findings are previewed inline.
+ *
+ * A cap on rendering only: the findings are never dropped. When the list is longer, the notice
+ * states the full count so the person is not left believing the platform found only these.
+ */
+const PORTFOLIO_PREVIEW = 8;
+
 interface Props {
   entityId: string;
   stage: StageDefinition;
@@ -42,7 +50,7 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
    *
    * Autosave is gated on this. Without the gate, merely *opening* a stage rewrites its status to
    * `in_progress` about a second after mount, which silently downgrades a stage the person had
-   * deliberately marked Complete or Skipped â€” and the readiness report reads exactly this column.
+   * deliberately marked Complete or Skipped — and the readiness report reads exactly this column.
    */
   const [dirty, setDirty] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,7 +79,7 @@ export default function StageForm({ entityId, stage, initialData, initialStatus,
         setError({
           code: 'network',
           domain: 'system',
-          message: 'Your changes could not be saved just now. They are still on screen â€” try again in a moment.',
+          message: 'Your changes could not be saved just now. They are still on screen — try again in a moment.',
           retryable: true,
           remediation: [{ kind: 'retry', label: 'Try saving again', primary: true }],
           preservesUserProgress: true,
@@ -118,24 +126,20 @@ useEffect(() => {
   const requiredMissing = requiredFields.filter((f) => fieldValue(data, f.key).trim().length === 0);
 
   return (
-    <div className="nx-stack" style={{ gap: '1.25rem' }}>
+    <div className="nx-stack nx-stack--loose">
       <div>
-        <div className="nx-row justify-between" style={{ alignItems: 'flex-start' }}>
+        <div className="nx-row justify-between items-start">
           <div>
             <p className="nx-eyebrow">
               Stage {stage.letter} &middot; {stage.summary}
             </p>
-            <h1 className="nx-title" style={{ marginTop: '0.3rem' }}>
-              {stage.title}
-            </h1>
+            <h1 className="nx-title">{stage.title}</h1>
           </div>
           <StatusBadge status={status} saving={saving} />
         </div>
-        <p className="nx-subtitle" style={{ marginTop: '0.6rem' }}>
-          {stage.whyItMatters}
-        </p>
+        <p className="nx-subtitle">{stage.whyItMatters}</p>
         {stage.requirement === 'evidence_minimum' ? (
-          <div className="nx-notice nx-notice--info" style={{ marginTop: '0.75rem' }}>
+          <div className="nx-notice nx-notice--info mt-3">
             <p className="text-xs leading-relaxed">
               This stage carries one of Nexora Entity&rsquo;s internal evidence requirements. They are not requirements
               imposed by Google or any other search engine, and each entry is checked for quality rather than merely
@@ -191,8 +195,8 @@ useEffect(() => {
       <div className="nx-card nx-card--pad nx-stack">
         <div className="nx-row justify-between">
           <p className="nx-help">
-            {saving ? 'Savingâ€¦' : savedAt ? `Autosaved ${new Date(savedAt).toLocaleTimeString()}` : 'Autosaves as you type'}
-            {filledCount > 0 ? ` Â· ${filledCount} field${filledCount === 1 ? '' : 's'} filled` : ''}
+            {saving ? 'Saving…' : savedAt ? `Autosaved ${new Date(savedAt).toLocaleTimeString()}` : 'Autosaves as you type'}
+            {filledCount > 0 ? ` · ${filledCount} field${filledCount === 1 ? '' : 's'} filled` : ''}
           </p>
           {requiredMissing.length > 0 && status !== 'skipped' ? (
             <p className="nx-help">
@@ -228,14 +232,14 @@ useEffect(() => {
 function StatusBadge({ status, saving }: { status: string; saving: boolean }) {
   const map: Record<string, { label: string; cls: string }> = {
     complete: { label: 'Complete', cls: 'nx-badge--good' },
-    skipped: { label: 'Skipped â€” not satisfied', cls: 'nx-badge--warn' },
+    skipped: { label: 'Skipped — not satisfied', cls: 'nx-badge--warn' },
     in_progress: { label: 'In progress', cls: 'nx-badge--accent' },
     pending: { label: 'Not started', cls: '' },
   };
   const entry = map[status] ?? map['pending']!;
   return (
     <span className={`nx-badge ${entry.cls}`}>
-      {saving ? 'Savingâ€¦' : entry.label}
+      {saving ? 'Saving…' : entry.label}
     </span>
   );
 }
@@ -277,8 +281,7 @@ function Field({
       ) : field.kind === 'list' || field.kind === 'url_list' || field.kind === 'tags' ? (
         <textarea
           id={field.key}
-          className="nx-textarea"
-          style={{ minHeight: field.kind === 'url_list' ? '6rem' : '5rem' }}
+          className={`nx-textarea ${field.kind === 'url_list' ? 'min-h-24' : 'min-h-20'}`}
           placeholder={field.placeholder ?? `One ${(field.itemLabel ?? 'item').toLowerCase()} per line`}
           value={text}
           onChange={(e) => onChange(e.target.value)}
@@ -368,7 +371,7 @@ function PhotoUploader({ entityId, field }: { entityId: string; field: StageFiel
         {field.help ?? 'A clear primary portrait plus supporting photographs work best.'} Each upload is checked for
         validity, resolution and duplication. Nexora Entity does not run biometric face matching.
       </p>
-      {state.busy ? <p className="nx-help">Checking your uploadsâ€¦</p> : null}
+      {state.busy ? <p className="nx-help">Checking your uploads…</p> : null}
       {state.error ? (
         <div className="nx-notice nx-notice--stop" role="alert">
           <p className="text-xs font-semibold">{state.error.message}</p>
@@ -380,14 +383,14 @@ function PhotoUploader({ entityId, field }: { entityId: string; field: StageFiel
             {qualifying} of {state.items.length} uploaded photo{state.items.length === 1 ? '' : 's'} qualify toward the
             minimum.
           </p>
-          <ul className="nx-stack-sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="nx-stack-sm nx-list">
             {state.items.map((item, i) => (
               <li key={i} className="nx-row items-start gap-2 text-xs">
                 <span className={`nx-badge ${item.ok ? 'nx-badge--good' : 'nx-badge--warn'}`}>
                   {item.ok ? 'Counts' : 'Not counted'}
                 </span>
                 <span className="min-w-0 flex-1 text-ink-600">
-                  <span className="font-medium">{item.label}</span> â€” {item.detail}
+                  <span className="font-medium">{item.label}</span> — {item.detail}
                 </span>
               </li>
             ))}
@@ -458,7 +461,7 @@ function PortfolioUploader({ entityId, field }: { entityId: string; field: Stage
         is treated as information you supplied. Nothing from it is published until you accept it, and a portfolio never
         replaces the five-website minimum.
       </p>
-      {state.busy ? <p className="nx-help">Reading your portfolioâ€¦</p> : null}
+      {state.busy ? <p className="nx-help">Reading your portfolio…</p> : null}
       {state.error ? (
         <div className="nx-notice nx-notice--stop" role="alert">
           <p className="text-xs font-semibold">{state.error.message}</p>
@@ -466,20 +469,27 @@ function PortfolioUploader({ entityId, field }: { entityId: string; field: Stage
       ) : null}
       {state.items.map((item, i) => (
         <p key={i} className="nx-help">
-          <span className="font-medium">{item.label}</span> â€” {item.detail}
+          <span className="font-medium">{item.label}</span> — {item.detail}
         </p>
       ))}
       {discovered.length > 0 ? (
         <div className="nx-notice nx-notice--info">
-          <p className="text-xs font-semibold">Found in your portfolio â€” review before anything is published</p>
-          <ul className="nx-stack-sm mt-1" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {discovered.slice(0, 8).map((d, i) => (
+          <p className="text-xs font-semibold">
+            Found in your portfolio{discovered.length > PORTFOLIO_PREVIEW ? ` — the first ${PORTFOLIO_PREVIEW} of ${discovered.length}` : ''} — review
+            before anything is published
+          </p>
+          <ul className="nx-stack-sm nx-list mt-1">
+            {discovered.slice(0, PORTFOLIO_PREVIEW).map((d, i) => (
               <li key={i} className="text-xs leading-relaxed">
-                <span className="font-medium">{d.value}</span> â€” {d.context}
+                <span className="font-medium">{d.value}</span> — {d.context}
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-xs">These are queued for review in your review queue.</p>
+          <p className="mt-1 text-xs">
+            {discovered.length > PORTFOLIO_PREVIEW
+              ? `All ${discovered.length} are queued for review; the rest are listed in your review queue.`
+              : 'These are queued for review in your review queue.'}
+          </p>
         </div>
       ) : null}
     </div>

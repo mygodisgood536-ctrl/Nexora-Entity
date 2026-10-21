@@ -9,6 +9,7 @@ export interface UserRecord {
   id: string;
   full_name: string;
   username: string;
+  username_norm: string;
   security_question: string;
   security_question_norm: string;
   security_answer_hash: string;

@@ -10,35 +10,40 @@
    ========================================================================== */
 
 :root {
-  /* Colour: a single ink family with one accent, so photographs carry the colour. */
-  --nx-ink-900: #0b0f14;
-  --nx-ink-800: #131a22;
-  --nx-ink-700: #1d2732;
-  --nx-ink-600: #2c3946;
-  --nx-ink-500: #47576a;
-  --nx-ink-400: #6b7c90;
-  --nx-ink-300: #94a3b5;
-  --nx-ink-200: #c3ccd8;
-  --nx-ink-100: #e2e8f0;
-  --nx-ink-50: #f1f5f9;
-  --nx-paper: #ffffff;
-  --nx-paper-alt: #fafbfd;
+  /* Colour: a deep navy canvas with a periwinkle accent and a teal secondary, matching the
+     mandatory design reference. The `ink-*` ramp is deliberately INVERTED relative to a light
+     theme because every Entity Website is a dark surface: `ink-900` is the strongest foreground
+     (near-white) and `ink-50`/`ink-100` are the elevated surfaces and hairlines. */
+  --nx-ink-950: #05070d;
+  --nx-ink-900: #f4f7fd;
+  --nx-ink-800: #e4ebf7;
+  --nx-ink-700: #c9d4e6;
+  --nx-ink-600: #b0bccf;
+  --nx-ink-500: #98a6bf;
+  --nx-ink-400: #8e9bb3;
+  --nx-ink-300: #74829e;
+  --nx-ink-200: #2b3550;
+  --nx-ink-100: #232d47;
+  --nx-ink-50: #151d31;
+  --nx-paper: #070a12;
+  --nx-paper-alt: #0b1020;
 
-  --nx-accent: #2563eb;
-  --nx-accent-strong: #1d4ed8;
-  --nx-accent-soft: #eff4ff;
-  --nx-accent-line: #c7d7fe;
+  --nx-accent: #7c9cff;
+  --nx-accent-strong: #a5bcff;
+  --nx-accent-soft: #1b2440;
+  --nx-accent-line: #33406e;
+  --nx-accent-ink: #0a1024;
 
-  --nx-positive: #0f766e;
-  --nx-positive-soft: #ecfdf5;
-  --nx-caution: #b45309;
-  --nx-caution-soft: #fffbeb;
+  --nx-positive: #5fd6c4;
+  --nx-positive-soft: #0d2b28;
+  --nx-caution: #f0b866;
+  --nx-caution-soft: #2c2410;
 
   /* Typography scale, fluid between 380px and 1280px viewports. */
   --nx-font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --nx-font-display: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --nx-font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --nx-font-mono: "SFMono-Regular", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --nx-font-display: "Fraunces", ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --nx-font-serif: "Fraunces", ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --nx-font-mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   --nx-text-xs: 0.75rem;
   --nx-text-sm: 0.875rem;
@@ -66,9 +71,9 @@
   --nx-radius-lg: 20px;
   --nx-radius-full: 999px;
 
-  --nx-shadow-sm: 0 1px 2px rgba(11, 15, 20, 0.06), 0 1px 3px rgba(11, 15, 20, 0.04);
-  --nx-shadow: 0 2px 4px rgba(11, 15, 20, 0.05), 0 8px 24px rgba(11, 15, 20, 0.07);
-  --nx-shadow-lg: 0 4px 8px rgba(11, 15, 20, 0.05), 0 20px 48px rgba(11, 15, 20, 0.1);
+  --nx-shadow-sm: 0 1px 2px rgba(3, 6, 14, 0.5), 0 1px 3px rgba(3, 6, 14, 0.4);
+  --nx-shadow: 0 2px 4px rgba(3, 6, 14, 0.45), 0 18px 40px -18px rgba(3, 6, 14, 0.85);
+  --nx-shadow-lg: 0 4px 8px rgba(3, 6, 14, 0.5), 0 30px 70px -28px rgba(3, 6, 14, 0.95);
 
   --nx-measure: 68ch;
   --nx-shell: 1140px;
@@ -108,8 +113,12 @@ body {
   font-family: var(--nx-font-sans);
   font-size: var(--nx-text-base);
   line-height: 1.65;
-  color: var(--nx-ink-800);
-  background: var(--nx-paper);
+  color: var(--nx-ink-700);
+  background-color: var(--nx-paper);
+  background-image:
+    radial-gradient(1100px 620px at 82% -8%, rgba(124, 156, 255, 0.1), transparent 62%),
+    radial-gradient(900px 520px at -12% 6%, rgba(95, 214, 196, 0.06), transparent 58%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -160,8 +169,8 @@ a:hover {
 }
 
 ::selection {
-  background: var(--nx-accent-line);
-  color: var(--nx-ink-900);
+  background: var(--nx-accent);
+  color: var(--nx-accent-ink);
 }
 
 /* ── Layout primitives ─────────────────────────────────────────────────── */
@@ -296,8 +305,8 @@ a:hover {
   top: 0;
   z-index: 100;
   padding: 0.75rem 1.25rem;
-  background: var(--nx-ink-900);
-  color: #fff;
+  background: var(--nx-accent);
+  color: var(--nx-accent-ink);
   border-radius: 0 0 var(--nx-radius) 0;
   font-weight: 600;
 }
@@ -353,10 +362,10 @@ a:hover {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 8px;
-  background: linear-gradient(140deg, var(--nx-ink-900), var(--nx-ink-600));
+  background: linear-gradient(140deg, var(--nx-accent), var(--nx-positive));
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--nx-accent-ink);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -447,10 +456,11 @@ a:hover {
   width: 100%;
   aspect-ratio: 4 / 5;
   border-radius: var(--nx-radius-lg);
-  background: linear-gradient(150deg, var(--nx-ink-800), var(--nx-ink-500));
-  color: #fff;
+  background: linear-gradient(150deg, var(--nx-accent), var(--nx-positive));
+  color: var(--nx-accent-ink);
   display: grid;
   place-items: center;
+  font-family: var(--nx-font-display);
   font-size: clamp(3rem, 9vw, 5rem);
   font-weight: 700;
   letter-spacing: -0.05em;
@@ -512,25 +522,25 @@ a:hover {
 }
 
 .nx-btn--primary {
-  background: var(--nx-ink-900);
-  color: #fff;
+  background-image: linear-gradient(180deg, #ffffff 0%, #d9e2ff 100%);
+  color: var(--nx-accent-ink);
   box-shadow: var(--nx-shadow-sm);
 }
 
 .nx-btn--primary:hover {
-  background: var(--nx-ink-700);
-  color: #fff;
+  background-image: linear-gradient(180deg, #ffffff 0%, #eef2ff 100%);
+  color: var(--nx-accent-ink);
 }
 
 .nx-btn--accent {
-  background: var(--nx-accent);
-  color: #fff;
+  background-image: linear-gradient(180deg, #8ea9ff 0%, #7c9cff 100%);
+  color: var(--nx-accent-ink);
   box-shadow: var(--nx-shadow-sm);
 }
 
 .nx-btn--accent:hover {
-  background: var(--nx-accent-strong);
-  color: #fff;
+  background-image: linear-gradient(180deg, #a5bcff 0%, #8ea9ff 100%);
+  color: var(--nx-accent-ink);
 }
 
 .nx-btn--ghost {

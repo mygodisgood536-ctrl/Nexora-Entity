@@ -34,11 +34,20 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: { message: 'Sign in first.' } }, { status: 401 });
 
   let requestedName = '';
+  // A named entity is a first-party claim about a person, so the studio's control posts a form.
+  // A JSON body is also accepted so a fetch caller is not silently ignored: without this, a caller
+  // that sends `{"displayName":"..."}` got a real entity that quietly carried the account name
+  // instead, with nothing to indicate the name had been dropped.
   try {
     const form = await request.formData();
     requestedName = String(form.get('displayName') ?? '');
   } catch {
-    requestedName = '';
+    try {
+      const body = (await request.json()) as { displayName?: unknown };
+      requestedName = typeof body?.displayName === 'string' ? body.displayName : '';
+    } catch {
+      requestedName = '';
+    }
   }
 
   const account = await findUserByUsername(user.username);

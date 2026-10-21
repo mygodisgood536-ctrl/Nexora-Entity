@@ -99,7 +99,7 @@ export default async function StagePage({
         </main>
 
         <div className="hidden xl:block">
-          <div className="sticky top-20 nx-stack" style={{ gap: '0.75rem' }}>
+          <div className="sticky top-20 nx-stack nx-stack--snug">
             <div className="nx-row justify-between">
               <p className="nx-eyebrow">Live preview</p>
               <Link href={`/app/preview/${entity.slug}`} className="nx-btn nx-btn--quiet nx-btn--sm">

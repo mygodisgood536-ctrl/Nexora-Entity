@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActionableErrorShape } from '@nexora/core';
 
+/**
+ * How much of a list is rendered at once.
+ *
+ * These are caps on rendering, not on capability: whatever falls outside them is still selectable,
+ * and the panel says so in words rather than letting the list appear to end on its own.
+ */
+const PROVIDER_PAGE = 60;
+const MODEL_PAGE = 40;
+
 export interface ProviderOption {
   id: string;
   name: string;
@@ -163,15 +172,13 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/40 p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="AI provider and model">
-      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="AI provider and model">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-ink-100 bg-ink-50 shadow-2xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-ink-100 p-5">
           <div>
             <p className="nx-eyebrow">AI configuration</p>
-            <h2 className="nx-title" style={{ fontSize: '1.25rem', marginTop: '0.2rem' }}>
-              Choose your AI provider and model
-            </h2>
-            <p className="nx-help" style={{ marginTop: '0.25rem', maxWidth: '58ch' }}>
+            <h2 className="nx-metric nx-metric--sm">Choose your AI provider and model</h2>
+            <p className="nx-help max-w-[58ch]">
               Availability is read live from OpenCode. Nothing is hard-coded, so anything OpenCode adds or removes appears
               here immediately. A model is only accepted after a real test call succeeds.
             </p>
@@ -183,7 +190,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
 
         <div className="flex-1 overflow-y-auto p-5">
           {active?.lastError ? (
-            <div className="nx-notice nx-notice--stop" role="alert" style={{ marginBottom: '1rem' }}>
+            <div className="nx-notice nx-notice--stop mb-4" role="alert">
               <p className="font-semibold">The active configuration is failing.</p>
               <p className="mt-1 text-xs leading-relaxed">
                 {active.lastError}
@@ -197,7 +204,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
           ) : null}
 
           {loadError ? (
-            <div className="nx-notice nx-notice--stop" role="alert" style={{ marginBottom: '1rem' }}>
+            <div className="nx-notice nx-notice--stop mb-4" role="alert">
               <p className="font-semibold">{loadError.message}</p>
               {loadError.detail ? <p className="mt-1 text-xs">{loadError.detail}</p> : null}
               <button type="button" className="nx-btn nx-btn--ghost nx-btn--sm mt-2" onClick={() => void load()}>
@@ -207,7 +214,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
           ) : null}
 
           {catalogue ? (
-            <div className="nx-stack" style={{ gap: '0.75rem' }}>
+            <div className="nx-stack nx-stack--snug">
               <div className="nx-row justify-between">
                 <p className="nx-help">
                   OpenCode {catalogue.opencodeVersion ?? ''} &middot; {catalogue.totals.providers} providers exposed &middot;{' '}
@@ -222,8 +229,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
 
               <div className="flex flex-wrap items-center gap-2">
                 <input
-                  className="nx-input"
-                  style={{ maxWidth: '18rem' }}
+                  className="nx-input max-w-72"
                   placeholder="Search providers…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -238,13 +244,13 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
               {loading && providers.length === 0 ? (
                 <div className="nx-stack-sm">
                   {[0, 1, 2].map((i) => (
-                    <div key={i} className="nx-skeleton" style={{ height: '2.5rem' }} />
+                    <div key={i} className="nx-skeleton nx-skeleton--bar" />
                   ))}
                 </div>
               ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {providers.slice(0, 60).map((p) => {
+                {providers.slice(0, PROVIDER_PAGE).map((p) => {
                   const isActive = providerId === p.id;
                   return (
                     <button
@@ -255,11 +261,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
                         setModelId(p.defaultModelId ?? p.models[0]?.id ?? null);
                         setVerifyError(null);
                       }}
-                      className="nx-card nx-card--pad text-left transition"
-                      style={{
-                        borderColor: isActive ? 'var(--color-accent-600)' : undefined,
-                        boxShadow: isActive ? '0 0 0 3px var(--color-accent-50)' : undefined,
-                      }}
+                      className="nx-card nx-selectable nx-card--pad text-left transition"
                       aria-pressed={isActive}
                     >
                       <div className="nx-row justify-between">
@@ -268,7 +270,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
                           {p.connected ? 'Usable now' : 'Needs credentials'}
                         </span>
                       </div>
-                      <p className="nx-help" style={{ marginTop: '0.25rem' }}>
+                      <p className="nx-help">
                         {p.connected
                           ? `${p.models.length} text model${p.models.length === 1 ? '' : 's'} · ${p.models.filter((m) => m.isFree).length} free`
                           : (p.notice ?? 'OpenCode has not reported usable credentials for this provider.')}
@@ -278,6 +280,16 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
                 })}
               </div>
 
+              {/* Rendering every provider OpenCode exposes would produce a list nobody can scan.
+                  Truncating is right, but hiding it is not: the person is told how many exist and
+                  that the search box reaches the rest, rather than being shown a list that silently
+                  ends. */}
+              {providers.length > PROVIDER_PAGE ? (
+                <p className="nx-help">
+                  Showing the first {PROVIDER_PAGE} of {providers.length} providers. Search by name to reach the others.
+                </p>
+              ) : null}
+
               {selected ? (
                 <div className="nx-card nx-card--pad nx-stack">
                   <div>
@@ -286,17 +298,18 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
                       Only models that accept text and produce text are offered. Nothing is assumed about tools or images.
                     </p>
                   </div>
-                  <div className="nx-stack-sm" style={{ maxHeight: '15rem', overflowY: 'auto' }}>
+                  <div className="nx-stack-sm nx-scroll max-h-60">
                     {selected.models.length === 0 ? (
                       <p className="nx-help">
                         No usable text models are exposed for this provider right now. Choose another provider.
                       </p>
                     ) : null}
-                    {selected.models.slice(0, 40).map((m) => (
+                    {selected.models.slice(0, MODEL_PAGE).map((m) => (
                       <label
                         key={m.id}
-                        className="nx-row flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-ink-50"
-                        style={{ background: modelId === m.id ? 'var(--color-accent-50)' : undefined }}
+                        className={`nx-row flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-ink-50 ${
+                          modelId === m.id ? 'nx-option--on' : ''
+                        }`}
                       >
                         <input
                           type="radio"
@@ -313,7 +326,13 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
                       </label>
                     ))}
                   </div>
-                  {!selected.connected ? (
+                  {selected.models.length > MODEL_PAGE ? (
+                    <p className="nx-help">
+                      Showing {MODEL_PAGE} of {selected.models.length} usable text models. Scroll within the list, or
+                      search providers above to compare a different one.
+                    </p>
+                  ) : null}
+                {!selected.connected ? (
                     <div className="nx-notice nx-notice--warn">
                       <p className="text-xs leading-relaxed">
                         OpenCode has not reported usable credentials for {selected.name}
@@ -352,7 +371,7 @@ export default function ProviderPanel({ active, open, onClose, onVerified }: Pro
           ) : loading ? (
             <div className="nx-stack-sm">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="nx-skeleton" style={{ height: '2.5rem' }} />
+                <div key={i} className="nx-skeleton nx-skeleton--bar" />
               ))}
             </div>
           ) : null}

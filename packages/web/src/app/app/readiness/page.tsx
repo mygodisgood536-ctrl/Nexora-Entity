@@ -51,15 +51,11 @@ export default async function ReadinessPage({
 
   return (
     <main id="main" className="nx-shell py-8">
-      <div className="nx-stack" style={{ gap: '1.25rem' }}>
+      <div className="nx-stack nx-stack--loose">
         <div>
           <p className="nx-eyebrow">Entity Readiness</p>
-          <h1 className="nx-title" style={{ marginTop: '0.35rem' }}>
-            {entity.display_name ?? 'This entity'}
-          </h1>
-          <p className="nx-help nx-mono" style={{ marginTop: '0.25rem' }}>
-            {entity.entity_uid}
-          </p>
+          <h1 className="nx-title">{entity.display_name ?? 'This entity'}</h1>
+          <p className="nx-help nx-mono">{entity.entity_uid}</p>
         </div>
 
         <ReadinessBoard report={report as never} entityId={entity.id} />
@@ -120,17 +116,17 @@ export default async function ReadinessPage({
         ) : null}
         <section className="nx-card nx-card--pad">
           <p className="nx-eyebrow">Latest complete review</p>
-          <p className="nx-lede" style={{ marginTop: '0.35rem' }}>
+          <p className="nx-lede">
             {ready
               ? 'Every blocking check passed. Publication is permitted by the Nexora Entity Readiness Standard.'
               : `${report.blockingIssues.length} blocking issue${report.blockingIssues.length === 1 ? '' : 's'} must be resolved before publication is permitted.`}
           </p>
           {ready ? (
-            <Link href={`/app/publish?entity=${entity.id}`} className="nx-btn nx-btn--accent" style={{ marginTop: '0.75rem' }}>
+            <Link href={`/app/publish?entity=${entity.id}`} className="nx-btn nx-btn--accent mt-3">
               Continue to publish
             </Link>
           ) : (
-            <Link href={`/app/review?entity=${entity.id}`} className="nx-btn nx-btn--primary" style={{ marginTop: '0.75rem' }}>
+            <Link href={`/app/review?entity=${entity.id}`} className="nx-btn nx-btn--primary mt-3">
               Resolve blocking issues
             </Link>
           )}

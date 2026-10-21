@@ -76,7 +76,7 @@ export default function PublishConsole({
   }
 
   return (
-    <div className="nx-stack" style={{ gap: '0.75rem' }}>
+    <div className="nx-stack nx-stack--snug">
       <section className="nx-card nx-card--pad nx-stack">
         <div className="nx-row justify-between">
           <div>
@@ -85,7 +85,7 @@ export default function PublishConsole({
               {availableTarget === 'vercel' ? 'Vercel (platform credential)' : 'Nexora Entity platform hosting'}
             </p>
           </div>
-          <span className="nx-badge">{availableTarget === 'vercel' ? 'Vercel' : 'First-party'}</span>
+          <span className="nx-badge">{availableTarget === 'vercel' ? 'Vercel' : 'Platform hosting'}</span>
         </div>
         <p className="nx-help">{vercelDetail}</p>
         <div className="nx-row">
@@ -147,8 +147,7 @@ export default function PublishConsole({
             href={result.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="nx-mono break-all text-sm"
-            style={{ color: 'var(--color-accent-600)' }}
+            className="nx-mono nx-link break-all text-sm"
           >
             {result.url}
           </a>
@@ -162,7 +161,7 @@ export default function PublishConsole({
                 Final validation ({result.validation.checks.filter((c) => c.ok).length}/{result.validation.checks.length}{' '}
                 passed)
               </summary>
-              <ul className="nx-stack-sm mt-2" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul className="nx-stack-sm nx-list mt-2">
                 {result.validation.checks.map((c) => (
                   <li key={c.name} className="nx-row justify-between text-xs">
                     <span className="text-ink-600">{c.name}</span>

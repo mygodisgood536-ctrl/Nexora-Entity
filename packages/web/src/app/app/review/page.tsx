@@ -7,7 +7,6 @@ import {
   listReviewItems,
   listSources,
 } from '@nexora/db';
-import { requireUser as _require } from '@/lib/server';
 import ReviewQueue from '@/components/review-queue';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +17,6 @@ export default async function ReviewPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireUser('/app/review');
-  void _require;
   const query = await searchParams;
   const entityId = Array.isArray(query['entity']) ? query['entity'][0] : (query['entity'] as string | undefined);
   if (!entityId) {
@@ -46,13 +44,11 @@ export default async function ReviewPage({
 
   return (
     <main id="main" className="nx-shell py-8">
-      <div className="nx-stack" style={{ gap: '1.25rem' }}>
+      <div className="nx-stack nx-stack--loose">
         <div>
           <p className="nx-eyebrow">Review queue</p>
-          <h1 className="nx-title" style={{ marginTop: '0.35rem' }}>
-            Only the decisions that genuinely need you
-          </h1>
-          <p className="nx-subtitle" style={{ marginTop: '0.5rem' }}>
+          <h1 className="nx-title">Only the decisions that genuinely need you</h1>
+          <p className="nx-subtitle">
             You are only interrupted when your decision is genuinely required: a contradiction between sources, a profile
             that may not be yours, or information Nexora Entity discovered and will not publish without your agreement.
           </p>
@@ -117,7 +113,7 @@ export default async function ReviewPage({
                           {!s.qualifies_websites && !s.qualifies_press ? <span className="nx-badge">no</span> : null}
                         </span>
                       </td>
-                      <td className="max-w-[22rem] text-xs">
+                      <td className="max-w-full text-xs">
                         {s.access_detail ?? s.qualifiers.assessment ?? '—'}
                         {s.platform_note ? <span className="block text-ink-400">{s.platform_note}</span> : null}
                       </td>
@@ -147,10 +143,8 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: 'goo
   return (
     <div className="nx-card nx-card--pad">
       <p className="nx-eyebrow">{label}</p>
-      <div className="nx-row" style={{ marginTop: '0.35rem' }}>
-        <span className="nx-title" style={{ fontSize: '1.6rem' }}>
-          {value}
-        </span>
+      <div className="nx-row mt-1">
+        <span className="nx-metric">{value}</span>
         <span className={`nx-badge ${cls}`}>{value === 0 ? 'clear' : 'action'}</span>
       </div>
     </div>

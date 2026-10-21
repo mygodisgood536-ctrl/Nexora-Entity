@@ -78,11 +78,11 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-ink-900 to-ink-600 text-[0.65rem] font-bold text-white"
+              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent-600 to-teal-700 text-[0.65rem] font-bold text-ink-950"
             >
               NE
             </span>
-            <span className="font-semibold tracking-tight text-ink-900">{PRODUCT_NAME}</span>
+            <span className="font-display text-[1.05rem] tracking-tight text-ink-900">{PRODUCT_NAME}</span>
           </Link>
           <Link href="/signup" className="nx-btn nx-btn--ghost nx-btn--sm">
             Create an account
@@ -93,21 +93,19 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
       <div className="nx-shell nx-shell--narrow flex flex-1 items-start justify-center py-12 md:py-20">
         <div className="w-full max-w-md">
           <p className="nx-eyebrow">Step 2 of 2</p>
-          <h1 className="nx-title" style={{ marginTop: '0.35rem' }}>
-            Sign in
-          </h1>
-          <p className="nx-subtitle" style={{ marginTop: '0.5rem', marginBottom: '1.5rem' }}>
+          <h1 className="nx-title">Sign in</h1>
+          <p className="nx-subtitle mb-6">
             Enter your username, the exact security question you chose when you signed up, and your security answer.
           </p>
 
           {justRegistered ? (
-            <div className="nx-notice nx-notice--good" role="status" style={{ marginBottom: '1rem' }}>
+            <div className="nx-notice nx-notice--good mb-4" role="status">
               Your account is ready. Sign in with the details you just chose.
             </div>
           ) : null}
 
           {error ? (
-            <div className="nx-notice nx-notice--stop" role="alert" style={{ marginBottom: '1rem' }}>
+            <div className="nx-notice nx-notice--stop mb-4" role="alert">
               <p className="font-semibold">{error.message}</p>
               {error.detail ? <p className="mt-1 text-xs opacity-90">{error.detail}</p> : null}
             </div>
@@ -116,7 +114,7 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
           {/* method="post": the security answer must never be serialised into the URL. The
               implicit GET method would put it in history, logs and the Referer header if
               JavaScript were unavailable. See spec §30. */}
-          <form onSubmit={submit} method="post" action="/api/auth/login" className="nx-stack" noValidate>
+          <form onSubmit={submit} method="post" className="nx-stack" noValidate>
             <div className="nx-field">
               <label className="nx-label" htmlFor="username">
                 Username
@@ -164,12 +162,12 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
               />
             </div>
 
-            <button type="submit" className="nx-btn nx-btn--primary" disabled={busy} style={{ marginTop: '0.5rem' }}>
+            <button type="submit" className="nx-btn nx-btn--primary mt-2" disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <p className="nx-help" style={{ marginTop: '1.25rem' }}>
+          <p className="nx-help mt-5">
             Repeated failed attempts temporarily lock the account to protect it. Your information is never lost.
           </p>
         </div>

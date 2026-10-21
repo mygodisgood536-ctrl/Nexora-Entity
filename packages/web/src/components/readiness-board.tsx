@@ -93,14 +93,12 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
   }
 
   return (
-    <div className="nx-stack" style={{ gap: '1.25rem' }}>
+    <div className="nx-stack nx-stack--loose">
       <section className="nx-card nx-card--pad nx-stack">
         <div className="nx-row justify-between">
           <div>
             <p className="nx-eyebrow">Result</p>
-            <p className="nx-title" style={{ fontSize: '1.6rem', marginTop: '0.25rem' }}>
-              {report.label}
-            </p>
+            <p className="nx-metric">{report.label}</p>
           </div>
           <div className="nx-row">
             <span className={`nx-badge ${ready ? 'nx-badge--good' : 'nx-badge--stop'} nx-badge--dot`}>
@@ -145,10 +143,10 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
       </section>
 
       {report.blockingIssues.length > 0 ? (
-        <section className="nx-stack" style={{ gap: '0.6rem' }}>
+        <section className="nx-stack nx-stack--xs">
           <p className="nx-eyebrow">What is blocking, and where it came from</p>
           {report.blockingIssues.map((issue, i) => (
-            <article className="nx-card nx-card--pad nx-stack" key={`${issue.code}-${i}`} style={{ gap: '0.5rem' }}>
+            <article className="nx-card nx-card--pad nx-stack nx-stack--tight" key={`${issue.code}-${i}`}>
               <div className="nx-row">
                 <span className="nx-badge nx-badge--stop">Blocking</span>
                 {issue.where.stageKey ? <span className="nx-badge">stage {issue.where.stageKey.split('_')[0]}</span> : null}
@@ -199,14 +197,12 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
           <div className="nx-stack-sm">
             <p className="nx-help">Material gaps — the platform needs these to publish:</p>
             {report.completeness.materialGaps.map((gap) => (
-              <Link key={gap.id} href={gap.href} className="nx-card nx-card--pad block no-underline transition hover:border-ink-300" style={{ color: 'inherit' }}>
+              <Link key={gap.id} href={gap.href} className="nx-card nx-card--pad nx-card--link block transition hover:border-ink-300">
                 <div className="nx-row justify-between">
                   <span className="text-sm font-medium text-ink-800">{gap.what}</span>
                   <span className="nx-badge">{gap.stageKey?.split('_')[0] ?? 'general'}</span>
                 </div>
-                <p className="nx-help" style={{ marginTop: '0.25rem' }}>
-                  {gap.why}
-                </p>
+                <p className="nx-help">{gap.why}</p>
               </Link>
             ))}
           </div>
@@ -233,7 +229,7 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
                     <td>
                       <span className={`nx-badge ${meta.cls}`}>{meta.label}</span>
                     </td>
-                    <td className="max-w-[28rem] text-xs">{c.detail}</td>
+                    <td className="text-xs break-words">{c.detail}</td>
                   </tr>
                 );
               })}
@@ -245,7 +241,7 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
             <summary className="cursor-pointer text-sm font-medium text-ink-600">
               {report.warnings.length} thing{report.warnings.length === 1 ? '' : 's'} worth knowing
             </summary>
-            <ul className="nx-stack-sm mt-2" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul className="nx-stack-sm nx-list mt-2">
               {report.warnings.map((w) => (
                 <li key={w.code} className="text-xs leading-relaxed text-ink-500">
                   <span className="font-medium text-ink-700">{w.title}.</span> {w.detail}
@@ -262,16 +258,14 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
           This pass re-examined the entire entity from the beginning — all of your information, all collected external
           information, every relationship, source, conflict and requirement — rather than only the field you corrected.
         </p>
-        <ol className="nx-stack-sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <ol className="nx-stack-sm nx-list">
           {answered.map((a, i) => (
             <li key={a.question} className="border-b border-ink-50 py-2 last:border-b-0">
               <div className="nx-row justify-between">
                 <span className="text-sm font-medium text-ink-800">{a.question}</span>
                 <span className={`nx-badge ${a.pass ? 'nx-badge--good' : 'nx-badge--warn'}`}>{a.answer}</span>
               </div>
-              <p className="nx-help" style={{ marginTop: '0.25rem' }}>
-                {a.detail}
-              </p>
+              <p className="nx-help">{a.detail}</p>
               <span className="sr-only">{i}</span>
             </li>
           ))}
@@ -302,15 +296,13 @@ function MinCard({
           {current}/{required}
         </span>
       </div>
-      <div className="nx-track" style={{ marginTop: '0.5rem' }} aria-hidden="true">
+      <div className="nx-track nx-track--spaced" aria-hidden="true">
         <div
           className={`nx-track__fill ${met ? 'nx-track__fill--good' : ''}`}
           style={{ width: `${Math.max(3, Math.min(100, (current / required) * 100))}%` }}
         />
       </div>
-      <p className="nx-help" style={{ marginTop: '0.4rem' }}>
-        {note}
-      </p>
+      <p className="nx-help mt-1">{note}</p>
     </div>
   );
 }

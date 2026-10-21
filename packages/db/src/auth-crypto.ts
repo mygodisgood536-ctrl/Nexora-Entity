@@ -1,54 +1,25 @@
 /** Auth: password hashing, session tokens, cookie helpers. */
 
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { config } from '@nexora/core/config';
 import { query, queryOne } from './pool';
+import { hashToken, newSessionToken, type AuthenticatedUser } from './auth-crypto-core';
 
-const SCRYPT_KEYLEN = 64;
-const SCRYPT_OPTS = { N: 16_384, r: 8, p: 1 } as const;
-
-/** Hash a security answer. Never stored in plaintext. */
-export function hashSecurityAnswer(answer: string, salt?: string): { hash: string; salt: string } {
-  const useSalt = salt ?? randomBytes(16).toString('hex');
-  const derived = scryptSync(normalizeAnswer(answer), useSalt, SCRYPT_KEYLEN, SCRYPT_OPTS).toString('hex');
-  return { hash: derived, salt: useSalt };
-}
-
-/** Case/whitespace-insensitive so a typo in casing does not lock anyone out. */
-export function normalizeAnswer(answer: string): string {
-  return answer.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-export function verifySecurityAnswer(answer: string, hash: string, salt: string): boolean {
-  const { hash: candidate } = hashSecurityAnswer(answer, salt);
-  const a = Buffer.from(candidate, 'hex');
-  const b = Buffer.from(hash, 'hex');
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
-export function normalizeUsername(username: string): string {
-  return username.trim().toLowerCase();
-}
-
-export function normalizeQuestion(question: string): string {
-  return question.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-export function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
-export function newSessionToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
-export interface SessionRow {
-  id: string;
-  user_id: string;
-  expires_at: Date;
-  revoked_at: Date | null;
-}
+/**
+ * The pure primitives live in `auth-crypto-core.ts` so the in-memory double can expose an
+ * identical surface. Re-exported here because `@nexora/db` presents them as one module.
+ */
+export {
+  hashSecurityAnswer,
+  normalizeAnswer,
+  verifySecurityAnswer,
+  normalizeUsername,
+  normalizeQuestion,
+  hashToken,
+  newSessionToken,
+  sessionCookie,
+  clearSessionCookie,
+} from './auth-crypto-core';
+export type { SessionRow, AuthenticatedUser } from './auth-crypto-core';
 
 export async function createSession(
   userId: string,
@@ -63,13 +34,6 @@ export async function createSession(
     [userId, hashToken(token), expiresAt, meta.ip ?? null, meta.userAgent?.slice(0, 400) ?? null],
   );
   return { token, expiresAt };
-}
-
-export interface AuthenticatedUser {
-  id: string;
-  full_name: string;
-  username: string;
-  created_at: Date;
 }
 
 export async function resolveSession(token: string | undefined): Promise<AuthenticatedUser | null> {
@@ -107,28 +71,4 @@ export async function revokeAllSessions(userId: string): Promise<void> {
   await query('UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [
     userId,
   ]);
-}
-
-export function sessionCookie(token: string, expiresAt: Date, secure: boolean): string {
-  const parts = [
-    `${config().sessionCookieName}=${token}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Expires=${expiresAt.toUTCString()}`,
-  ];
-  if (secure) parts.push('Secure');
-  return parts.join('; ');
-}
-
-export function clearSessionCookie(secure: boolean): string {
-  const parts = [
-    `${config().sessionCookieName}=`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    'Max-Age=0',
-  ];
-  if (secure) parts.push('Secure');
-  return parts.join('; ');
 }

@@ -21,11 +21,6 @@ export async function requireUser(returnTo?: string): Promise<AuthenticatedUser>
   return user;
 }
 
-export function requestMeta(): { ip: string | undefined; userAgent: string | undefined } {
-  // headers() is async in Next 16; this helper is used inside async handlers.
-  return { ip: undefined, userAgent: undefined };
-}
-
 export async function requestMetaAsync(): Promise<{ ip: string | undefined; userAgent: string | undefined }> {
   const h = await headers();
   const forwarded = h.get('x-forwarded-for');

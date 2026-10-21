@@ -60,7 +60,14 @@ const ANSWER = 'orbit';
 
 /** A navigation request, as a browser makes it. */
 function browserHeaders(): Record<string, string> {
-  return { accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' };
+  // A real browser posting a <form> sends the urlencoded media type. The test helper used to send
+  // only `accept`, so the shared `api()` helper stamped `application/json` onto a urlencoded body
+  // and the server read no fields at all — which silently fell back to the account name and made
+  // the entity-naming checks pass for the wrong reason.
+  return {
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+  };
 }
 
 async function main(): Promise<void> {
@@ -140,6 +147,50 @@ console.log('\n--- 6. entity creation ---');
   const slug: string | undefined = create.body?.slug;
   check('entity has an id', Boolean(entityId), JSON.stringify(create.body).slice(0, 200));
   check('entity creation points at the next stage', String(create.body?.next ?? '').includes('/app/stages/'), String(create.body?.next));
+
+  console.log('\n--- 6b. more than one entity per account ---');
+  // A person may hold several entities. The studio has to offer that without signing out, and it
+  // has to refuse to show an entity that belongs to somebody else.
+  //
+  // This posts the way the studio's own "Add another person" control posts — a browser form, not
+  // JSON. The route deliberately reads a form body rather than a JSON body: a named entity is a
+  // first-party claim about a person, so it arrives the same way the UI sends it.
+  const second = await api('/api/entities', {
+    method: 'POST',
+    headers: browserHeaders(),
+    body: new URLSearchParams({ displayName: `Smoke Second Person ${stamp}` }).toString(),
+  });
+  check('a second entity can be created while signed in', second.res.status === 303, `got ${second.res.status}`);
+  const secondLocation = String(second.res.headers.get('location') ?? '');
+  const secondId = new URL(secondLocation, 'http://127.0.0.1').searchParams.get('entity');
+  check('the second entity has its own id', Boolean(secondId) && secondId !== entityId, `${String(entityId)} vs ${String(secondId)}`);
+
+  const ownedList = await api('/api/entities');
+  const ownedEntities: { id: string; display_name: string | null; slug: string }[] = ownedList.body?.entities ?? [];
+  const ownedIds: string[] = ownedEntities.map((e) => e.id);
+  check(
+    'both entities are listed for the account',
+    ownedIds.includes(String(entityId)) && ownedIds.includes(String(secondId)),
+    `ids: ${ownedIds.join(', ')}`,
+  );
+  check(
+    'the submitted display name is kept on the new entity',
+    ownedEntities.some((e) => e.display_name === `Smoke Second Person ${stamp}`),
+    `names: ${ownedEntities.map((e) => e.display_name).join(' | ')}`,
+  );
+
+  // The studio resolves ?entity= against this account's own list, so a plausible but foreign id
+  // must fall back to a real entity rather than being honoured.
+  const foreign = await api('/app?entity=not-a-real-entity-id');
+  check('an unknown entity id does not break the studio', foreign.res.status === 200, `got ${foreign.res.status}`);
+  const switched = await api(`/app?entity=${secondId}`);
+  const studioHtml = String(switched.body);
+  check('the studio renders the requested entity', switched.res.status === 200 && studioHtml.includes(`Smoke Second Person ${stamp}`), `status ${switched.res.status}`);
+  check(
+    'the studio offers a way to add another entity',
+    studioHtml.includes('action="/api/entities"') && studioHtml.includes('new-entity-name'),
+    'no create-entity control found on /app',
+  );
 
   console.log('\n--- 7. AI provider discovery (live OpenCode) ---');
   const providers = await api('/api/ai/providers');

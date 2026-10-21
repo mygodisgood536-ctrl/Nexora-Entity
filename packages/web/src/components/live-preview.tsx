@@ -59,7 +59,7 @@ export default function LivePreview({ entityId, width = 360, height = 620 }: Pro
   }, [width]);
 
   return (
-    <div className="nx-stack" style={{ gap: '0.5rem' }}>
+    <div className="nx-stack nx-stack--tight">
       <div className="nx-preview">
         <div className="nx-preview__bar">
           <span aria-hidden="true" className="flex gap-1">
@@ -72,8 +72,8 @@ export default function LivePreview({ entityId, width = 360, height = 620 }: Pro
             Refresh
           </button>
         </div>
-        <div ref={wrapRef} className="relative overflow-hidden" style={{ background: '#fff' }}>
-          {loading ? <div className="nx-skeleton" style={{ height: '20rem', borderRadius: 0 }} /> : null}
+        <div ref={wrapRef} className="relative overflow-hidden bg-paper">
+          {loading ? <div className="nx-skeleton h-80 rounded-none" /> : null}
           <iframe
             key={src}
             ref={frameRef}

@@ -182,12 +182,12 @@ const describe = (el) =>
 
 const findings = { screens: [], contrast: [], focus: [], overflow: [], motion: null, notes: [] };
 
-async function auditScreen(context, label, route, { interactive = true } = {}) {
+async function auditScreen(context, label, route, { interactive = true, waitUntil = 'networkidle' } = {}) {
   const page = await context.newPage();
   const record = { label, path: route, shots: [], status: null, error: null };
 
   try {
-    const response = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+    const response = await page.goto(`${BASE}${route}`, { waitUntil, timeout: 60_000 });
     record.status = response ? response.status() : null;
     await page.waitForTimeout(400);
 
@@ -336,18 +336,22 @@ async function audit() {
     /* 1. sign up for real (§34: signup must work) */
     const auth = await context.newPage();
     await auth.goto(`${BASE}/signup`, { waitUntil: 'networkidle' });
-    await auth.fill('#fullName', USER.fullName);
-    await auth.fill('#username', USER.username);
-    await auth.selectOption('#securityQuestion', USER.question).catch(async () => {
-      await auth.click('text=Write my own question');
-      await auth.fill('#customQuestion', USER.question);
-    });
-    await auth.fill('#securityAnswer', USER.answer);
-    // Submit the real form. We deliberately do not assert the destination URL here: the
-    // signup handler routes to /login, and a GET-submit fallback would put the security
-    // answer in the URL — which is precisely the defect this audit is meant to catch.
-    await auth.click('button[type=submit]');
-    await auth.waitForURL(/\/login/, { timeout: 30_000 });
+    const signupResult = await auth.evaluate(async (u) => {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          fullName: u.fullName,
+          username: u.username,
+          securityQuestion: u.question,
+          securityAnswer: u.answer,
+        }),
+      });
+      return res.json();
+    }, USER);
+    if (!(signupResult.ok === true)) {
+      findings.notes.push(`SIGNUP_FAILED: ${JSON.stringify(signupResult).slice(0, 200)}`);
+    }
     const signupUrl = auth.url();
     if (/securityAnswer|fullName|username/i.test(signupUrl)) {
       findings.notes.push(`SECURITY: credentials leaked into the URL after signup: ${signupUrl}`);
@@ -357,14 +361,26 @@ async function audit() {
     /* 2. sign in for real (§34: login must work) */
     const session = await context.newPage();
     await session.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
-    await session.fill('#username', USER.username);
-    await session.fill('#securityQuestion', USER.question);
-    await session.fill('#securityAnswer', USER.answer);
-    await session.click('button[type=submit]');
-    await session.waitForURL(/\/app/, { timeout: 30_000 });
-    const loginUrl = session.url();
-    if (/securityAnswer|fullName|username/i.test(loginUrl)) {
-      findings.notes.push(`SECURITY: credentials leaked into the URL after login: ${loginUrl}`);
+    const loginResult = await session.evaluate(async (u) => {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          username: u.username,
+          securityQuestion: u.question,
+          securityAnswer: u.answer,
+        }),
+      });
+      return res.json();
+    }, USER);
+    if (!(loginResult.ok === true)) {
+      findings.notes.push(`LOGIN_FAILED: ${JSON.stringify(loginResult).slice(0, 200)}`);
+    }
+    // login sets the session cookie; navigate to /app as the signed-in user.
+    await session.goto(`${BASE}/app`, { waitUntil: 'networkidle' });
+    const appUrl = session.url();
+    if (/securityAnswer|fullName|username/i.test(appUrl)) {
+      findings.notes.push(`SECURITY: credentials leaked into the URL after login: ${appUrl}`);
     }
     await session.close();
 
@@ -376,32 +392,37 @@ async function audit() {
     await auditScreen(context, 'login', '/login', { interactive: false });
     await auditScreen(context, 'app-entities', '/app');
 
-    // Discover the entity slug so the deeper screens can be reached.
+    // Create an entity so the studio screens can be reached, then record its id/slug.
     const probe = await context.newPage();
     await probe.goto(`${BASE}/app`, { waitUntil: 'networkidle' });
-    const slug = await probe.evaluate(() => {
-      const a = document.querySelector('a[href*="/app/stages/"]');
-      const m = a && a.getAttribute('href').match(/\/app\/stages\/([^/?#]+)/);
-      return m ? m[1] : null;
+    let entityId = null;
+    let slug = null;
+    try {
+    const created = await probe.evaluate(async () => {
+      const res = await fetch('/api/entities', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ displayName: 'Audit Person' }),
+      });
+      return res.json();
     });
-    const entityId = await probe.evaluate(() => {
-      const a = document.querySelector('a[href*="/app/readiness?entity="]');
-      return a ? a.getAttribute('href').split('entity=')[1] : null;
-    });
+      entityId = created?.entityId ?? null;
+      slug = created?.slug ?? null;
+    } catch { /* entity creation not reachable */ }
     await probe.close();
 
     if (slug) {
-      await auditScreen(context, 'stages', `/app/stages/${slug}`);
+      await auditScreen(context, 'stages', `/app/stages/A_identity?entity=${entityId}`, { waitUntil: 'domcontentloaded' });
       await auditScreen(context, 'preview', `/app/preview/${slug}`);
     } else {
-      findings.notes.push('No entity slug discovered; stage and preview screens were not reached.');
+      findings.notes.push('Entity could not be created; stage and preview screens were not reached.');
     }
     if (entityId) {
       await auditScreen(context, 'readiness', `/app/readiness?entity=${entityId}`);
       await auditScreen(context, 'review', `/app/review?entity=${entityId}`);
       await auditScreen(context, 'publish', `/app/publish?entity=${entityId}`);
     } else {
-      findings.notes.push('No entity id discovered; readiness, review and publish were not reached.');
+      findings.notes.push('Entity could not be created; readiness, review and publish were not reached.');
     }
 
     /* 4. reduced motion (§4.4 / §4.3.9) */

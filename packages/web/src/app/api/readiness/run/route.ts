@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {
   createReadinessRun,
   findEntityForUser,
@@ -70,5 +69,3 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error }, { status: error.status });
   }
 }
-
-void Link;

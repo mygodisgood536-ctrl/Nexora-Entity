@@ -10,11 +10,11 @@ export default function HomePage() {
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-ink-900 to-ink-600 text-[0.65rem] font-bold text-white"
+              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent-600 to-teal-700 text-[0.65rem] font-bold text-ink-950"
             >
               NE
             </span>
-            <span className="font-semibold tracking-tight text-ink-900">{PRODUCT_NAME}</span>
+            <span className="font-display text-[1.05rem] tracking-tight text-ink-900">{PRODUCT_NAME}</span>
           </div>
           <nav className="flex items-center gap-2">
             <Link href="/login" className="nx-btn nx-btn--ghost nx-btn--sm">
@@ -30,14 +30,11 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(1000px 460px at 76% -10%, rgba(37,99,235,0.10), transparent 60%), radial-gradient(700px 380px at 4% 0%, rgba(11,15,20,0.07), transparent 58%)',
-          }}
+          className="nx-grid-backdrop"
         />
+        <div aria-hidden="true" className="nx-hero-glow" />
         <div className="nx-shell relative grid gap-12 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-center md:py-24">
-          <div className="nx-stack" style={{ gap: '1.25rem' }}>
+          <div className="nx-stack nx-stack--loose">
             <p className="nx-eyebrow">Digital identity, made coherent</p>
             <h1 className="nx-display">{PRODUCT_TAGLINE}</h1>
             <p className="nx-subtitle">
@@ -46,7 +43,7 @@ export default function HomePage() {
               ambiguity, and refuses to publish until the whole entity passes a complete second-pass review. Only then does
               it compose a beautiful public Entity Website from its pre-designed design system.
             </p>
-            <div className="nx-row" style={{ marginTop: '0.5rem' }}>
+            <div className="nx-row mt-2">
               <Link href="/signup" className="nx-btn nx-btn--accent">
                 Build your entity
               </Link>
@@ -54,7 +51,7 @@ export default function HomePage() {
                 How it works
               </a>
             </div>
-            <p className="nx-help" style={{ maxWidth: '54ch' }}>
+            <p className="nx-help max-w-[54ch]">
               Account creation asks for four things only: your full name, a username, a security question and a security
               answer. You are never asked technical questions the platform can answer itself.
             </p>
@@ -62,10 +59,10 @@ export default function HomePage() {
 
           <div className="nx-card nx-card--pad nx-stack">
             <p className="nx-eyebrow">What 100% actually means</p>
-            <p className="nx-title" style={{ fontSize: '1.15rem' }}>
+            <p className="nx-metric nx-metric--sm">
               Complete and internally coherent against the Nexora Entity Readiness Standard.
             </p>
-            <ul className="nx-stack-sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul className="nx-stack-sm nx-list">
               {[
                 'Every fact keeps where it came from, when it was checked, and how it was verified.',
                 'What you tell us stays labelled as yours. What an inspected source says stays labelled as the source’s.',
@@ -86,7 +83,7 @@ export default function HomePage() {
       <section id="how" className="border-t border-ink-100 bg-ink-50/50">
         <div className="nx-shell py-16 md:py-20">
           <h2 className="nx-title">The guided flow</h2>
-          <p className="nx-subtitle" style={{ marginTop: '0.5rem' }}>
+          <p className="nx-subtitle">
             You move through clear stages. The difficult research, cross-checking, identity resolution, source analysis and
             technical work happen behind the scenes.
           </p>
@@ -102,7 +99,7 @@ export default function HomePage() {
               ['Publish', 'At 100% Entity Readiness, the public Entity Website is generated, validated and deployed.'],
             ].map(([title, body], i) => (
               <li key={title} className="nx-card nx-card--pad">
-                <div className="nx-row" style={{ gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <div className="nx-row mb-1 gap-2">
                   <span className="nx-rail__letter">{i + 1}</span>
                   <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
                 </div>

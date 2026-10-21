@@ -101,9 +101,9 @@ export default function ReviewQueue({ entityId, initialItems }: Props) {
   }
 
   return (
-    <div className="nx-stack" style={{ gap: '0.75rem' }}>
+    <div className="nx-stack nx-stack--snug">
       {pending.map((item) => (
-        <article className="nx-card nx-card--pad nx-stack" key={item.id} style={{ gap: '0.6rem' }}>
+        <article className="nx-card nx-card--pad nx-stack nx-stack--xs" key={item.id}>
           <div className="nx-row justify-between">
             <div className="nx-row">
               <span className="nx-badge nx-badge--accent">{KIND_LABEL[item.kind] ?? item.kind}</span>
@@ -144,7 +144,7 @@ export default function ReviewQueue({ entityId, initialItems }: Props) {
           <summary className="cursor-pointer text-sm font-medium text-ink-600">
             {decided.length} decision{decided.length === 1 ? '' : 's'} already made
           </summary>
-          <ul className="nx-stack-sm mt-3" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="nx-stack-sm nx-list mt-3">
             {decided.map((i) => (
               <li key={i.id} className="nx-row justify-between border-b border-ink-50 py-1.5 text-xs">
                 <span className="min-w-0 flex-1 truncate text-ink-600">{i.title}</span>

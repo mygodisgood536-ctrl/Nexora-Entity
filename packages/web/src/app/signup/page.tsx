@@ -74,11 +74,11 @@ export default function SignupForm() {
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-ink-900 to-ink-600 text-[0.65rem] font-bold text-white"
+              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent-600 to-teal-700 text-[0.65rem] font-bold text-ink-950"
             >
               NE
             </span>
-            <span className="font-semibold tracking-tight text-ink-900">{PRODUCT_NAME}</span>
+            <span className="font-display text-[1.05rem] tracking-tight text-ink-900">{PRODUCT_NAME}</span>
           </Link>
           <Link href="/login" className="nx-btn nx-btn--ghost nx-btn--sm">
             I already have an account
@@ -90,16 +90,14 @@ export default function SignupForm() {
         <div className="grid gap-8 md:grid-cols-[1fr_0.85fr]">
           <div>
             <p className="nx-eyebrow">Step 1 of 2</p>
-            <h1 className="nx-title" style={{ marginTop: '0.35rem' }}>
-              Create your account
-            </h1>
-            <p className="nx-subtitle" style={{ marginTop: '0.5rem', marginBottom: '1.5rem' }}>
+            <h1 className="nx-title">Create your account</h1>
+            <p className="nx-subtitle mb-6">
               Four fields. No email address, no password, no technical questions. You will sign in with your username,
               your security question and your security answer.
             </p>
 
             {error ? (
-              <div className="nx-notice nx-notice--stop" role="alert" style={{ marginBottom: '1rem' }}>
+              <div className="nx-notice nx-notice--stop mb-4" role="alert">
                 <p className="font-semibold">{error.message}</p>
                 {error.detail ? <p className="mt-1 text-xs opacity-90">{error.detail}</p> : null}
               </div>
@@ -109,7 +107,7 @@ export default function SignupForm() {
                 loaded yet, a form with the implicit GET method would serialise every field
                 into the URL — putting the security answer into browser history, proxy and
                 server logs, and the Referer header. Spec §30 requires credential protection. */}
-            <form onSubmit={submit} method="post" action="/api/auth/signup" className="nx-stack" noValidate>
+            <form onSubmit={submit} method="post" className="nx-stack" noValidate>
               <div className="nx-field">
                 <label className="nx-label" htmlFor="fullName">
                   Full name
@@ -212,7 +210,7 @@ export default function SignupForm() {
                 </p>
               </div>
 
-              <button type="submit" className="nx-btn nx-btn--primary" disabled={busy} style={{ marginTop: '0.5rem' }}>
+              <button type="submit" className="nx-btn nx-btn--primary mt-2" disabled={busy}>
                 {busy ? 'Creating your account…' : 'Create account'}
               </button>
               <p className="nx-help">
@@ -223,7 +221,7 @@ export default function SignupForm() {
 
           <aside className="nx-card nx-card--pad nx-stack self-start">
             <p className="nx-eyebrow">What happens next</p>
-            <ol className="nx-stack-sm" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ol className="nx-stack-sm nx-list">
               {[
                 'You sign in with your username, security question and answer.',
                 'You create your entity. The AI provider and model panel opens immediately.',
