@@ -14,8 +14,9 @@
 import { config } from '@nexora/core/config';
 import { NexoraError, createLogger } from '@nexora/core';
 import { classifyProviderFailure, failureCode, type ProviderFailureClassification } from './failure';
-import { baseUrl, ensureReady, health } from './server';
+import { baseUrl, ensureReady, health, authHeaders } from './server';
 import { modelExists } from './discovery';
+import { consoleProviderHeaders, fetchConsoleConfig, isConsoleTransport, runConsoleChat } from './console';
 
 const log = createLogger('opencode:ops');
 
@@ -103,7 +104,14 @@ async function httpJson<T>(
     const res = await fetch(`${baseUrl()}${pathname}`, {
       ...init,
       signal: controller.signal,
-      headers: { 'content-type': 'application/json', accept: 'application/json', ...(init.headers ?? {}) },
+      // The bearer token is required by a hosted bridge for session creation and message sending
+      // as well as for the health probe, so it is applied to every call the platform makes.
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        ...authHeaders(),
+        ...(init.headers ?? {}),
+      },
     });
     const text = await res.text();
     let data: unknown = undefined;
@@ -234,6 +242,36 @@ export async function runPrompt(
   const started = Date.now();
 
   await ensureReady();
+
+  // The Console transport serves the same operation through its OpenAI-compatible chat endpoint.
+  // The workspace configuration carries the headers the gateway needs to resolve the account, so
+  // they are read from the live configuration rather than assumed.
+  if (isConsoleTransport()) {
+    try {
+      const workspace = await fetchConsoleConfig(30_000);
+      const headers = consoleProviderHeaders(workspace, model.providerId);
+      const result = await runConsoleChat(model.modelId, prompt, {
+        timeoutMs: timeoutMs,
+        system: options.system,
+        headers,
+      });
+      return {
+        text: result.text,
+        provider: model,
+        latencyMs: Date.now() - started,
+        sessionId: `console:${model.providerId}/${model.modelId}`,
+      };
+    } catch (err) {
+      const classification = classifyProviderFailure(err);
+      log.warn('AI operation failed', {
+        operation,
+        provider: model.providerId,
+        model: model.modelId,
+        kind: classification.kind,
+      });
+      throw aiProviderError({ classification, model, operation });
+    }
+  }
 
   let sessionId: string;
   try {

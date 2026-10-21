@@ -17,6 +17,15 @@ describe('classifyProviderFailure', () => {
     { input: 'HTTP 429 Too Many Requests', kind: ProviderFailureKind.rateLimited },
     { input: 'insufficient_quota: you exceeded your current quota', kind: ProviderFailureKind.usageLimit },
     { input: 'payment required', kind: ProviderFailureKind.usageLimit },
+    // The hosted bridge reports a depleted workspace allowance as a 402 with this wording.
+    { input: 'OpenCode inference responded 402: Insufficient account funds', kind: ProviderFailureKind.usageLimit },
+    { input: 'HTTP 402 Payment Required', kind: ProviderFailureKind.usageLimit },
+    // The hosted bridge refuses its free models when they are called from outside OpenCode. That
+    // is not a credential problem, so it must not be reported as one.
+    {
+      input: 'OpenCode inference responded 403: FreeTierError: free tier can only be used from within OpenCode',
+      kind: ProviderFailureKind.modelUnavailable,
+    },
     { input: '401 Unauthorized', kind: ProviderFailureKind.authenticationFailed },
     { input: 'invalid api key supplied', kind: ProviderFailureKind.authenticationFailed },
     { input: 'model not found: gpt-foo', kind: ProviderFailureKind.modelUnavailable },

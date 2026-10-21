@@ -24,6 +24,7 @@
 
 import { config } from '@nexora/core/config';
 import { createLogger, ConfigurationError } from '@nexora/core';
+import { consoleBase, fetchConsoleConfig, isConsoleTransport } from './console';
 
 const log = createLogger('opencode');
 
@@ -67,6 +68,19 @@ export function getLastError(): string | null {
   return mod.lastError;
 }
 
+/**
+ * The headers every request to the bridge must carry.
+ *
+ * A hosted bridge is expected to require credentials; local development usually does not. The
+ * token is applied centrally so that no call site can forget it — provider discovery, session
+ * creation and message sending all need the same credential as the health probe, and a bridge that
+ * requires a bearer token rejects the rest of its API when they arrive unauthenticated.
+ */
+export function authHeaders(): Record<string, string> {
+  const token = config().opencodeToken;
+  return token ? { authorization: `Bearer ${token}` } : {};
+}
+
 export async function httpGet(
   pathname: string,
   timeoutMs: number,
@@ -77,7 +91,7 @@ export async function httpGet(
   try {
     const res = await fetch(`${baseUrl()}${pathname}`, {
       signal: controller.signal,
-      headers: { accept: 'application/json', ...headers },
+      headers: { accept: 'application/json', ...authHeaders(), ...headers },
     });
     const body = await res.text();
     return { status: res.status, body };
@@ -98,10 +112,35 @@ export interface BridgeHealth {
 
 /** Health probe. Never throws — the caller decides how to surface a problem. */
 export async function health(): Promise<BridgeHealth> {
-  const cfg = config();
-  // A hosted bridge is expected to require credentials; local development usually does not.
-  const headers: Record<string, string> = cfg.opencodeToken ? { authorization: `Bearer ${cfg.opencodeToken}` } : {};
-  const res = await httpGet('/global/health', 4000, headers);
+  // The Console transport is probed with the workspace configuration, which is the endpoint that
+  // actually answers for it. The serve-server transport keeps its own liveness route.
+  if (isConsoleTransport()) {
+    try {
+      const workspace = await fetchConsoleConfig(20_000);
+      const providers = Object.keys(workspace.providers ?? {}).length;
+      mod.state = 'ready';
+      mod.version = mod.version ?? 'console';
+      return {
+        healthy: true,
+        version: mod.version,
+        managed: false,
+        pid: null,
+        detail: `OpenCode Console reachable at ${consoleBase()} (${providers} provider(s))`,
+      };
+    } catch (err) {
+      mod.state = 'unavailable';
+      mod.lastError = err instanceof Error ? err.message : String(err);
+      return {
+        healthy: false,
+        version: mod.version,
+        managed: false,
+        pid: null,
+        detail: `OpenCode Console did not respond at ${consoleBase()}: ${mod.lastError}`,
+      };
+    }
+  }
+
+  const res = await httpGet('/global/health', 4000);
   if (res && res.status === 200) {
     try {
       const parsed = JSON.parse(res.body) as { healthy?: boolean; version?: string };
@@ -146,13 +185,18 @@ export async function ensureReady(): Promise<BridgeHealth> {
   mod.state = 'unavailable';
   mod.lastError = h.detail;
   throw ConfigurationError(
-    `Nexora Entity could not reach the OpenCode AI bridge at ${baseUrl()}.`,
+    isConsoleTransport()
+      ? `Nexora Entity could not reach the OpenCode Console at ${consoleBase()}.`
+      : `Nexora Entity could not reach the OpenCode AI bridge at ${baseUrl()}.`,
     cfgStartHint(),
   );
 }
 
 function cfgStartHint(): string {
   const cfg = config();
+  if (isConsoleTransport()) {
+    return 'The OpenCode Console is configured but did not answer. Check that NEXORA_OPENCODE_URL points at the Console and that NEXORA_OPENCODE_TOKEN is a valid service-account key.';
+  }
   if (cfg.opencodeManaged) {
     return 'Locally, start it with `npm run services`. On a hosted deployment, set NEXORA_OPENCODE_URL (and NEXORA_OPENCODE_TOKEN if the bridge requires authentication) to the cloud-hosted bridge.';
   }

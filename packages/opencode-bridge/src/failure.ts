@@ -54,14 +54,32 @@ const RULES: Rule[] = [
     }),
   },
   {
-    test: (h) => /insufficient[_ ]quota|exceeded your current quota|billing|credit balance|payment required|usage limit/i.test(h),
+    test: (h) =>
+      /insufficient[_ ]quota|exceeded your current quota|billing|credit balance|payment required|usage limit|insufficient (account )?funds|\b402\b/i.test(
+        h,
+      ),
     classify: () => ({
       kind: ProviderFailureKind.usageLimit,
       userMessage:
-        'This AI provider has run out of the allowance attached to it. You can choose a different provider or model and carry on from here.',
+        'This AI provider has run out of the allowance or credit attached to it. You can choose a different provider or model and carry on from here.',
       retryable: false,
       requiresModelChange: true,
       requiresCredentials: true,
+    }),
+  },
+  {
+    // The hosted bridge only allows its free models to be called from inside OpenCode itself.
+    // Calling one over the API is refused with a 403 that is not a credential problem, so it is
+    // classified before the authentication rule below and reported as what it is: the model
+    // cannot be reached this way.
+    test: (h) => /free tier can only be used|only be used from within|not available via the api/i.test(h),
+    classify: () => ({
+      kind: ProviderFailureKind.modelUnavailable,
+      userMessage:
+        'This model cannot be called through the OpenCode API. Choose a different model and Nexora Entity will continue from where it stopped.',
+      retryable: false,
+      requiresModelChange: true,
+      requiresCredentials: false,
     }),
   },
   {

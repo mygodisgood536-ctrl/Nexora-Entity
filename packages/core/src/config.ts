@@ -68,6 +68,14 @@ export interface AppConfig {
   opencodePort: number;
   /** Full base URL of the bridge, e.g. `https://opencode.internal.example`. Takes precedence over host/port. */
   opencodeUrl: string | undefined;
+  /**
+   * Base URL of the OpenCode inference gateway.
+   *
+   * The OpenCode Console serves both the workspace configuration (`<console>/api/v2/config`)
+   * and model inference (`<inference>/openai/v1/chat/completions`) from two different origins.
+   * When the bridge is pointed at the Console, this defaults to the sibling inference origin.
+   */
+  opencodeInferenceUrl: string | undefined;
   /** Bearer token presented to the bridge. Required once the bridge is not on loopback. */
   opencodeToken: string | undefined;
   /** Whether local tooling may start a managed OpenCode process. The web application never does. */
@@ -137,6 +145,7 @@ function load(): AppConfig {
      * host/port.
      */
     opencodeUrl: process.env.NEXORA_OPENCODE_URL ?? undefined,
+    opencodeInferenceUrl: process.env.NEXORA_OPENCODE_INFERENCE_URL ?? undefined,
     /** Bearer token presented to the bridge. Required once the bridge is not on loopback. */
     opencodeToken: process.env.NEXORA_OPENCODE_TOKEN ?? undefined,
     opencodeManaged: bool(process.env.NEXORA_OPENCODE_MANAGED, true),

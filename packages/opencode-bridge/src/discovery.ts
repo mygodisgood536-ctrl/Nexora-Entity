@@ -8,6 +8,7 @@
 
 import { createLogger } from '@nexora/core';
 import { ensureReady, getVersionString, health } from './server';
+import { fetchConsoleConfig, isConsoleTransport } from './console';
 
 const log = createLogger('opencode:discovery');
 
@@ -94,13 +95,16 @@ interface RawProvider {
 }
 
 async function apiGet<T>(pathname: string, timeoutMs: number): Promise<T> {
-  const { config } = await import('@nexora/core/config');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${(await import('./server')).baseUrl()}${pathname}`, {
+    const { authHeaders, baseUrl } = await import('./server');
+    const res = await fetch(`${baseUrl()}${pathname}`, {
       signal: controller.signal,
-      headers: { accept: 'application/json' },
+      // A hosted bridge requires the same bearer token as the health probe. Without it here the
+      // provider catalogue came back unauthenticated, so the panel would show no providers even
+      // though the bridge was reachable and correctly configured.
+      headers: { accept: 'application/json', ...authHeaders() },
     });
     if (!res.ok) {
       throw new Error(`OpenCode ${pathname} responded ${res.status}`);
@@ -108,7 +112,6 @@ async function apiGet<T>(pathname: string, timeoutMs: number): Promise<T> {
     return (await res.json()) as T;
   } finally {
     clearTimeout(timer);
-    void config;
   }
 }
 
@@ -174,6 +177,13 @@ export async function fetchCatalogue(options: { includeAllProviders?: boolean } 
   if (!h.healthy) {
     // health() already carries an honest detail string
     throw new Error(h.detail);
+  }
+
+  // The Console transport reads the workspace configuration, which is the OpenCode V2 config
+  // format: a provider map whose entries carry the models. It is normalised into the same shape
+  // the serve-server transport returns, so one mapper serves both and neither hard-codes a list.
+  if (isConsoleTransport()) {
+    return fetchConsoleCatalogue(started, options);
   }
 
   const providerPayload = await apiGet<{
@@ -283,6 +293,97 @@ export async function fetchCatalogue(options: { includeAllProviders?: boolean } 
 export async function fetchUsableProviders(): Promise<DiscoveredProvider[]> {
   const cat = await fetchCatalogue();
   return cat.providers.filter((p) => p.connected && p.models.length > 0);
+}
+
+/**
+ * The Console's workspace configuration, mapped into the platform's provider catalogue.
+ *
+ * The Console serves the OpenCode V2 config format, so the same model mapping is used. Two
+ * differences are handled honestly rather than guessed at:
+ *
+ *  * A model the workspace has disabled is not offered, and a model the workspace has enabled is
+ *    offered. The Console reports availability this way rather than through a separate
+ *    "connected" list.
+ *
+ *  * The Console's chat endpoint takes messages and returns assistant text, so a model served by
+ *    it accepts text and produces text. That is the endpoint's own contract, so it is stated as
+ *    fact rather than left to a guess about the model.
+ *
+ * Cost and context window are not reported by the Console for a workspace model, so they are left
+ * unknown rather than invented.
+ */
+async function fetchConsoleCatalogue(
+  started: number,
+  options: { includeAllProviders?: boolean },
+): Promise<ProviderCatalogue> {
+  const workspace = await fetchConsoleConfig(30_000);
+  const providers: DiscoveredProvider[] = [];
+
+  for (const [providerId, provider] of Object.entries(workspace.providers ?? {})) {
+    const models: DiscoveredModel[] = [];
+    for (const [modelId, raw] of Object.entries(provider.models ?? {})) {
+      if (raw?.disabled === true) continue;
+      const mapped = mapModel(modelId, {
+        id: modelId,
+        name: raw?.name ?? modelId,
+        capabilities: raw?.capabilities ?? { input: { text: true }, output: { text: true } },
+        cost: raw?.cost,
+        limit: raw?.limit,
+        release_date: raw?.release_date,
+        status: raw?.status,
+      });
+      if (!isUsableForNexora(mapped)) continue;
+      models.push(mapped);
+    }
+    models.sort((a, b) => {
+      if (a.isFree !== b.isFree) return a.isFree ? -1 : 1;
+      return (b.contextWindow ?? 0) - (a.contextWindow ?? 0);
+    });
+
+    providers.push({
+      id: providerId,
+      name: provider.name ?? providerId,
+      // The Console is the credential source for this provider, not an environment variable.
+      source: 'console',
+      envVars: provider.env ?? [],
+      // A provider the Console lists is reachable through the workspace's own credentials.
+      connected: true,
+      credentialRequirement: 'none',
+      authMethods: [],
+      modelCount: Object.keys(provider.models ?? {}).length,
+      defaultModelId: models[0]?.id ?? null,
+      models,
+      notice: null,
+    });
+  }
+
+  providers.sort((a, b) => {
+    if (a.connected !== b.connected) return a.connected ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const filtered = options.includeAllProviders
+    ? providers
+    : providers.filter((p) => p.connected || p.models.length > 0);
+
+  log.info('catalogue refreshed from the OpenCode Console', {
+    providers: filtered.length,
+    connectedProviders: filtered.filter((p) => p.connected).length,
+    usableModels: filtered.reduce((n, p) => n + p.models.length, 0),
+  });
+
+  return {
+    opencodeVersion: 'console',
+    fetchedAt: new Date().toISOString(),
+    durationMs: Date.now() - started,
+    providers: filtered,
+    totals: {
+      providers: filtered.length,
+      connectedProviders: filtered.filter((p) => p.connected).length,
+      usableModels: filtered.reduce((n, p) => n + p.models.length, 0),
+      freeModels: filtered.reduce((n, p) => n + p.models.filter((m) => m.isFree).length, 0),
+    },
+  };
 }
 
 /** Verify a provider/model exists in OpenCode right now. Used before a verification probe. */
