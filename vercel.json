@@ -2,7 +2,7 @@
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "framework": "nextjs",
     "buildCommand": "cd packages/web && next build",
-    "installCommand": "npm install --include=optional --no-audit --no-fund",
+    "installCommand": "npm install --include=optional --include=dev --no-audit --no-fund",
     "outputDirectory": "packages/web/.next",
     "github": {
         "silent": true
