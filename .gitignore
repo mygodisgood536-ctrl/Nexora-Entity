@@ -23,3 +23,5 @@ storage/sites/
 test-results/
 playwright-report/
 artifacts/
+.vercel
+.env*
