@@ -9,7 +9,7 @@ import { buildReadinessReport } from '@nexora/engine';
 import { requireUser } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 600;
+export const maxDuration = 300;
 
 
 /**
