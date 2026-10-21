@@ -10,7 +10,7 @@ const EXPECTED = [
 
 async function main() {
   const rows = await query<{ table_name: string }>(
-    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'nexora' ORDER BY table_name",
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
   );
   const present = new Set(rows.map((r) => r.table_name));
   const missing = EXPECTED.filter((t) => !present.has(t));
@@ -22,7 +22,7 @@ async function main() {
   const counts: Record<string, number> = {};
   for (const t of EXPECTED) {
     if (!present.has(t)) continue;
-    const r = await query<{ n: number }>(`SELECT count(*)::int AS n FROM nexora.${t}`);
+    const r = await query<{ n: number }>(`SELECT count(*)::int AS n FROM public.${t}`);
     counts[t] = r[0]?.n ?? 0;
   }
 

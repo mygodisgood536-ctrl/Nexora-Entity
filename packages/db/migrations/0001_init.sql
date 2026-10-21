@@ -12,13 +12,19 @@
 --    release never count as independent confirmations.
 --  * `readiness_runs` stores the full check-by-check result including the
 --    mandatory complete second-pass review.
+--
+--  * The tables live in the default `public` schema. A dedicated `nexora`
+--    schema was tried first, but reaching it required setting `search_path`,
+--    and a hosted connection pool (Neon PgBouncer) refuses a `search_path`
+--    startup parameter outright — every request failed before it reached a
+--    query. The database itself is the isolation boundary, so the schema
+--    buys nothing that is worth breaking deployment over.
 -- =====================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-CREATE SCHEMA IF NOT EXISTS nexora;
-SET search_path TO nexora, public;
+SET search_path TO public;
 
 -- ── Accounts ────────────────────────────────────────────────────────────
 

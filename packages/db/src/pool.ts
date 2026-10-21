@@ -26,9 +26,12 @@ export function getPool(): Pool {
   if (!holder.__nexoraEntityPool) {
     const pool = new Pool({
       connectionString: config().databaseUrl,
-      // Applied per connection by the server itself, so every pooled client — including ones
-      // created long after startup — resolves unqualified names inside the `nexora` schema.
-      options: '-c search_path=nexora,public',
+      // No `options` startup parameter. It used to carry `search_path` so unqualified table
+      // names resolved inside a dedicated `nexora` schema, but a hosted connection pool
+      // (Neon PgBouncer) refuses that parameter outright — "unsupported startup parameter in
+      // options: search_path" — which failed every request before it reached a query. The
+      // application tables now live in the default `public` schema, so no schema switching is
+      // needed and the connection string works on pooled, direct and local PostgreSQL alike.
       // The postmaster caps this cluster at 100 connections, so the pool stays well under that
       // and must survive every route running at once.
       max: 12,
@@ -36,7 +39,11 @@ export function getPool(): Pool {
       // run. A stale client is the usual cause of "Connection terminated unexpectedly" surfacing
       // to a user as an unexplained error.
       idleTimeoutMillis: 15_000,
-      connectionTimeoutMillis: 10_000,
+      // Generous, because a hosted pooled connection can take several seconds to establish on a
+      // cold path. The previous 10s budget expired while the server was still opening the
+      // socket, which surfaced as "Connection terminated due to connection timeout" — a failure
+      // that looks like a database outage but is really the deadline being too short.
+      connectionTimeoutMillis: 30_000,
       application_name: 'nexora-entity',
       // No TCP keepalive: on Windows it causes pg to hand out sockets the postmaster has
       // already closed, producing mid-query terminations that no retry can interpret.
