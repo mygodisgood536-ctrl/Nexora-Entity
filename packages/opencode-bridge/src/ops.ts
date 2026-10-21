@@ -89,7 +89,17 @@ export function aiProviderError(input: {
       : undefined,
     retryable: c.retryable,
     remediation,
-    context: { failureKind: c.kind, raw: c.raw?.slice(0, 2000) },
+    // The whole classification is kept, not just its kind. An operation that fails inside the
+    // bridge is classified once, where the provider's own words are still available; a caller
+    // that re-classifies the resulting error must be able to recover that answer instead of
+    // re-reading a user-facing message that no longer contains it.
+    context: {
+      failureKind: c.kind,
+      retryable: c.retryable,
+      requiresModelChange: c.requiresModelChange,
+      requiresCredentials: c.requiresCredentials,
+      raw: c.raw?.slice(0, 2000),
+    },
   });
 }
 

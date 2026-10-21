@@ -214,6 +214,13 @@ const DEFAULT: ProviderFailureClassification = {
 };
 
 export function classifyProviderFailure(error: unknown): ProviderFailureClassification {
+  // An error that was already classified by the bridge carries the answer in its context. The
+  // provider's own words are gone from the message by this point — the message is the plain
+  // language written for the person — so re-deriving the classification from it would lose the
+  // real cause and report every failure as unknown.
+  const carried = carriedClassification(error);
+  if (carried) return carried;
+
   const raw =
     error instanceof Error
       ? `${error.message} ${(error as { cause?: unknown }).cause instanceof Error ? ((error as { cause: Error }).cause.message) : String((error as { cause?: unknown }).cause ?? '')}`
@@ -225,6 +232,34 @@ export function classifyProviderFailure(error: unknown): ProviderFailureClassifi
     if (rule.test(raw)) return { ...rule.classify(raw), raw };
   }
   return { ...DEFAULT, raw };
+}
+
+/**
+ * Recover a classification the bridge already made.
+ *
+ * `aiProviderError` records the classification it was given in the error's context. When a caller
+ * classifies that error again, the original answer is authoritative: it was derived from the
+ * provider's own response, and re-deriving it from the plain-language message would replace a
+ * precise cause with "unknown".
+ */
+function carriedClassification(error: unknown): ProviderFailureClassification | null {
+  if (!error || typeof error !== 'object') return null;
+  const context = (error as { context?: Record<string, unknown> }).context;
+  if (!context) return null;
+  const kind = context['failureKind'];
+  if (typeof kind !== 'string') return null;
+  const known = Object.values(ProviderFailureKind) as string[];
+  if (!known.includes(kind)) return null;
+  const raw = typeof context['raw'] === 'string' ? (context['raw'] as string) : undefined;
+  const message = (error as { message?: unknown }).message;
+  return {
+    kind: kind as ProviderFailureKind,
+    userMessage: typeof message === 'string' && message ? message : DEFAULT.userMessage,
+    retryable: context['retryable'] === true,
+    requiresModelChange: context['requiresModelChange'] === true,
+    requiresCredentials: context['requiresCredentials'] === true,
+    raw,
+  };
 }
 
 function safeStringify(v: unknown): string {

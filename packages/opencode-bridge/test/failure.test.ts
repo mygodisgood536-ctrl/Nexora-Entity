@@ -86,4 +86,31 @@ describe('classifyProviderFailure', () => {
     expect(failureCode(ProviderFailureKind.rateLimited)).toBe('ai_provider_rate_limited');
     expect(failureCode(ProviderFailureKind.unknown)).toBe('ai_provider_unknown');
   });
+
+  it('keeps the original classification when an already-classified failure is classified again', () => {
+    // The bridge classifies a failure where the provider's own words are still available, then
+    // throws it as a plain-language error. Re-classifying that error must not lose the cause.
+    const carried = Object.assign(new Error('This AI provider has run out of the allowance attached to it.'), {
+      context: {
+        failureKind: ProviderFailureKind.usageLimit,
+        retryable: false,
+        requiresModelChange: true,
+        requiresCredentials: true,
+        raw: 'OpenCode inference responded 402: Insufficient account funds',
+      },
+    });
+    const again = classifyProviderFailure(carried);
+    expect(again.kind).toBe(ProviderFailureKind.usageLimit);
+    expect(again.retryable).toBe(false);
+    expect(again.requiresModelChange).toBe(true);
+    expect(again.requiresCredentials).toBe(true);
+    expect(again.raw).toContain('Insufficient account funds');
+  });
+
+  it('does not trust a context that does not name a known failure kind', () => {
+    const spoofed = Object.assign(new Error('something broke'), {
+      context: { failureKind: 'not_a_real_kind' },
+    });
+    expect(classifyProviderFailure(spoofed).kind).toBe(ProviderFailureKind.unknown);
+  });
 });
