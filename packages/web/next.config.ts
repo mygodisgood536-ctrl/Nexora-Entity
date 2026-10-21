@@ -25,7 +25,7 @@ if (useMemoryDb) {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  output: 'standalone',
+  // output: 'standalone' is not used on Vercel — native Next.js support handles deployment.
   serverExternalPackages: ['pg', 'sharp', 'unpdf', 'mammoth'],
   typescript: { ignoreBuildErrors: false },
   // `design-system-css.ts` resolves its path at runtime, so the bundler cannot trace the single
