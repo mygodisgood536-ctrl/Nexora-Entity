@@ -3,7 +3,7 @@
     "framework": "nextjs",
     "buildCommand": "cd packages/web && next build && cd ../.. && node scripts/copy-standalone-assets.mjs",
     "installCommand": "npm install --include=optional --no-audit --no-fund",
-    "outputDirectory": "packages/web/.next/standalone",
+    "outputDirectory": "packages/web/.next/standalone/packages/web",
     "github": {
         "silent": true
     },
