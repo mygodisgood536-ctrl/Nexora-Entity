@@ -38,13 +38,22 @@ export async function POST(request: Request) {
   // A JSON body is also accepted so a fetch caller is not silently ignored: without this, a caller
   // that sends `{"displayName":"..."}` got a real entity that quietly carried the account name
   // instead, with nothing to indicate the name had been dropped.
-  try {
-    const form = await request.formData();
-    requestedName = String(form.get('displayName') ?? '');
-  } catch {
+  //
+  // The media type decides which body is read. `request.formData()` does not fail on a JSON
+  // request — it returns an empty form — so trying it first would discard every JSON field and
+  // silently fall back to the account's name.
+  const contentType = request.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
     try {
       const body = (await request.json()) as { displayName?: unknown };
       requestedName = typeof body?.displayName === 'string' ? body.displayName : '';
+    } catch {
+      requestedName = '';
+    }
+  } else {
+    try {
+      const form = await request.formData();
+      requestedName = String(form.get('displayName') ?? '');
     } catch {
       requestedName = '';
     }
