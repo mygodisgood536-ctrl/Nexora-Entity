@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { config } from '@nexora/core/config';
 import { StorageError, createLogger } from '@nexora/core';
 import { findEntityForUser, insertPortfolioFile, insertReviewItem, updatePortfolioExtraction } from '@nexora/db';
 import { extractPortfolio, portfolioCandidates, portfolioFingerprint } from '@nexora/inspect';
 import { requireUser } from '@/lib/server';
+import { storage } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,12 +37,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: false, error: StorageError('No portfolio file was uploaded.').toJSON() }, { status: 400 });
   }
 
-  const cfg = config();
-  // `config().portfolioDir` is already absolute; using it directly honours NEXORA_PORTFOLIO_DIR
-  // instead of hardcoding storage/portfolios under the repository root.
-  const portfolioDir = cfg.portfolioDir;
-  await mkdir(portfolioDir, { recursive: true });
-
   const results: { label: string; ok: boolean; detail: string }[] = [];
   const allCandidates: { value: string; context: string }[] = [];
 
@@ -60,8 +53,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const buffer = Buffer.from(await file.arrayBuffer());
     const sha = portfolioFingerprint(buffer);
     const storedName = `${entity.slug}-${sha.slice(0, 12)}-${path.basename(file.name).replace(/[^\w.-]+/g, '_')}`;
-    const stored = path.join(portfolioDir, storedName);
-    await writeFile(stored, buffer);
+    // The file is written through the configured storage driver, so a hosted deployment keeps
+    // portfolios in a bucket rather than on an ephemeral disk.
+    const key = path.posix.join('portfolios', storedName);
+    await storage().put(key, buffer, file.type || 'application/octet-stream');
 
     const extraction = await extractPortfolio({ buffer, filename: file.name, mime: file.type || null });
 
@@ -70,7 +65,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       originalFilename: file.name,
       mime: file.type || 'application/octet-stream',
       bytes: buffer.length,
-      storagePath: path.join('portfolios', storedName),
+      storagePath: key,
       sha256: sha,
     });
 

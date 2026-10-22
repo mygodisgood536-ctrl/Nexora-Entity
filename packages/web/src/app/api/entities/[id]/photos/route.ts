@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { config } from '@nexora/core/config';
 import { StorageError } from '@nexora/core';
 import {
   findEntityForUser,
@@ -11,6 +9,7 @@ import {
 } from '@nexora/db';
 import { qualifyPhoto, validateImage } from '@nexora/inspect';
 import { requireUser } from '@/lib/server';
+import { storage } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,13 +41,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: false, error: StorageError('No image was uploaded.').toJSON() }, { status: 400 });
   }
 
-  const cfg = config();
-  // `config().photoDir` is already an absolute path (resolveDir applies path.resolve). It was
-  // previously rewritten down to the literal "photos" and re-joined onto repoRoot, which silently
-  // ignored NEXORA_PHOTO_DIR and NEXORA_STORAGE_DIR entirely.
-  const photoDir = cfg.photoDir;
-  await mkdir(photoDir, { recursive: true });
-
   const results: { label: string; ok: boolean; detail: string }[] = [];
 
   for (const file of files) {
@@ -68,13 +60,17 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       continue;
     }
 
+    // The bytes are written through the configured storage driver, so a hosted deployment keeps
+    // them in a bucket rather than on an ephemeral disk. The name is derived from the content,
+    // so the same photo uploaded twice occupies one object.
     const fileName = `${entity.slug}-${validated.image.sha256.slice(0, 16)}.jpg`;
-    await writeFile(path.join(photoDir, fileName), validated.image.buffer);
+    const key = path.posix.join('photos', fileName);
+    const stored = await storage().put(key, validated.image.buffer, validated.image.mime);
 
     const rec = await insertPhoto({
       entityId,
-      storagePath: path.join('photos', fileName),
-      publicUrl: `/media/photos/${fileName}`,
+      storagePath: stored.key,
+      publicUrl: storage().publicUrl(stored.key),
       originalFilename: file.name,
       mime: validated.image.mime,
       bytes: validated.image.bytes,
