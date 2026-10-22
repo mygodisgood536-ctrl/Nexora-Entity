@@ -45,6 +45,7 @@
         "ui:audit": "node scripts/ui-audit.mjs",
         "verify": "npm run lint && npm run typecheck && npm run test && npm run build && npm run web:start && npm run smoke:public",
         "smoke:public": "node scripts/smoke-public.mjs",
+        "verify:frontend": "node scripts/verify-frontend.mjs",
         "design:audit": "node scripts/design-audit.mjs"
     },
     "allowScripts": {

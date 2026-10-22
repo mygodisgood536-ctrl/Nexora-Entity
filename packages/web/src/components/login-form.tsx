@@ -97,7 +97,7 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
       <div className="nx-shell nx-shell--narrow flex flex-1 items-start justify-center py-12 md:py-20">
         <div className="w-full max-w-md">
           <p className="nx-eyebrow">Step 2 of 2</p>
-          <h1 className="nx-title">Sign in</h1>
+          <h1 className="nx-title">Sign In</h1>
           <p className="nx-subtitle mb-6">
             Enter your username, the exact security question you chose when you signed up, and your security answer.
           </p>

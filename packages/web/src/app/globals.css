@@ -104,6 +104,7 @@
   --nx-veil: rgba(16, 24, 40, 0.04);
   --nx-veil-strong: rgba(16, 24, 40, 0.07);
   --nx-scrim: rgba(16, 24, 40, 0.55);
+  --nx-dock-bg: rgba(255, 255, 255, 0.88);
   --nx-grid-line: rgba(16, 24, 40, 0.06);
   --nx-glow-accent: rgba(93, 112, 224, 0.16);
   --nx-glow-teal: rgba(20, 160, 141, 0.12);
@@ -169,6 +170,7 @@
   --nx-veil: rgba(255, 255, 255, 0.04);
   --nx-veil-strong: rgba(255, 255, 255, 0.07);
   --nx-scrim: rgba(3, 6, 14, 0.7);
+  --nx-dock-bg: rgba(7, 10, 18, 0.82);
   --nx-grid-line: rgba(150, 168, 205, 0.08);
   --nx-glow-accent: rgba(124, 156, 255, 0.1);
   --nx-glow-teal: rgba(95, 214, 196, 0.06);
@@ -892,7 +894,9 @@ body {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: var(--nx-scrim);
+  /* The dock is a surface, not a scrim: it carries the page's own colour so the text on it stays
+     legible in both themes. */
+  background: var(--nx-dock-bg);
   backdrop-filter: saturate(180%) blur(16px);
   border-top: 1px solid color-mix(in srgb, var(--nx-ink-300) 26%, transparent);
 }
@@ -936,6 +940,19 @@ body {
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.8125rem;
+}
+
+/*
+ * A table with several meaningful columns cannot be squeezed into a phone without making every
+ * cell unreadable. It keeps a workable minimum width and the surrounding container scrolls it,
+ * which is the honest way to present a wide dataset on a narrow screen.
+ */
+.nx-table--wide {
+  min-width: 44rem;
+}
+
+.nx-table--medium {
+  min-width: 32rem;
 }
 
 .nx-table th {

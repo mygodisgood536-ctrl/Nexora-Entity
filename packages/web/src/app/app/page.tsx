@@ -276,7 +276,7 @@ function FirstRun() {
     <main id="main" className="nx-shell py-16">
       <div className="mx-auto max-w-2xl text-center">
         <p className="nx-eyebrow">Welcome to {PRODUCT_NAME}</p>
-        <h1 className="nx-display mt-2">Let&rsquo;s build one complete representation of who you are online.</h1>
+        <h1 className="nx-display mt-2">Let&rsquo;s Build One Complete Representation Of Who You Are Online.</h1>
         <p className="nx-subtitle mx-auto mt-4">
           Create your entity and the AI provider and model panel opens immediately. Everything after that is guided: fill
           the stages you want, skip the rest, and Nexora Entity does the research, cross-checking and technical work.

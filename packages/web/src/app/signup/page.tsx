@@ -94,7 +94,7 @@ export default function SignupForm() {
         <div className="grid gap-8 md:grid-cols-[1fr_0.85fr]">
           <div>
             <p className="nx-eyebrow">Step 1 of 2</p>
-            <h1 className="nx-title">Create your account</h1>
+            <h1 className="nx-title">Create Your Account</h1>
             <p className="nx-subtitle mb-6">
               Four fields. No email address, no password, no technical questions. You will sign in with your username,
               your security question and your security answer.

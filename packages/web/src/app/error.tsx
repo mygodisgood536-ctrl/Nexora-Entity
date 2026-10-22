@@ -14,7 +14,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <main id="main" className="nx-shell flex min-h-screen flex-col items-center justify-center py-20 text-center">
       <p className="nx-eyebrow">Something went wrong</p>
-      <h1 className="nx-display mt-2">This screen could not be shown.</h1>
+      <h1 className="nx-display mt-2">This Screen Could Not Be Shown.</h1>
       <p className="nx-subtitle mt-4">
         Nothing you have entered has been lost. Try again, and if it keeps failing, come back to your entities and
         continue from there.

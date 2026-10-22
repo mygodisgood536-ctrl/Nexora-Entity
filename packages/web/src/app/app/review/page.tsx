@@ -47,7 +47,7 @@ export default async function ReviewPage({
       <div className="nx-stack nx-stack--loose">
         <div>
           <p className="nx-eyebrow">Review queue</p>
-          <h1 className="nx-title">Only the decisions that genuinely need you</h1>
+          <h1 className="nx-title">Only The Decisions That Genuinely Need You</h1>
           <p className="nx-subtitle">
             You are only interrupted when your decision is genuinely required: a contradiction between sources, a profile
             that may not be yours, or information Nexora Entity discovered and will not publish without your agreement.
@@ -65,7 +65,7 @@ export default async function ReviewPage({
         <section className="nx-card nx-card--pad nx-stack">
           <p className="nx-eyebrow">Every source and how it was judged</p>
           <div className="nx-table__scroll">
-            <table className="nx-table">
+            <table className="nx-table nx-table--wide">
               <thead>
                 <tr>
                   <th>Source</th>
@@ -123,6 +123,7 @@ export default async function ReviewPage({
               </tbody>
             </table>
           </div>
+          <p className="nx-help sm:hidden">Scroll the table sideways to see every column.</p>
           <p className="nx-help">
             A source that could not be read is shown as such. Nexora Entity never claims a source was checked when it was
             not, and never claims a profile is yours without supporting evidence.

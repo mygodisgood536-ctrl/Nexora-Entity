@@ -84,7 +84,7 @@ export default function HomePage() {
 
       <section id="how" className="border-t border-ink-100 bg-ink-50/50">
         <div className="nx-shell py-16 md:py-20">
-          <h2 className="nx-title">The guided flow</h2>
+          <h2 className="nx-title">The Guided Flow</h2>
           <p className="nx-subtitle">
             You move through clear stages. The difficult research, cross-checking, identity resolution, source analysis and
             technical work happen behind the scenes.
@@ -115,7 +115,7 @@ export default function HomePage() {
       <section className="border-t border-ink-100">
         <div className="nx-shell grid gap-8 py-16 md:grid-cols-2 md:py-20">
           <div className="nx-stack">
-            <h2 className="nx-title">About search engines, honestly</h2>
+            <h2 className="nx-title">About Search Engines, Honestly</h2>
             <p className="text-sm leading-relaxed text-ink-600">
               Nexora Entity is designed to make a person’s online identity more coherent, connected, attributable and
               understandable to search engines. It publishes one clear canonical identity page, accurate Person and
@@ -130,7 +130,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="nx-stack">
-            <h2 className="nx-title">Evidence minimums</h2>
+            <h2 className="nx-title">Evidence Minimums</h2>
             <p className="text-sm leading-relaxed text-ink-600">
               Nexora Entity applies its own internal evidence requirements for describing a real person: five qualifying
               live websites, four qualifying press releases, and four qualifying photographs.

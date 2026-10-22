@@ -255,7 +255,7 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
       <section className="nx-card nx-card--pad nx-stack">
         <p className="nx-eyebrow">Every check</p>
         <div className="nx-table__scroll">
-          <table className="nx-table">
+          <table className="nx-table nx-table--medium">
             <thead>
               <tr>
                 <th>Check</th>
