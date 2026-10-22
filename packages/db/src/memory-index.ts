@@ -71,6 +71,9 @@ export {
   type SessionRow,
   type AuthenticatedUser,
 } from './auth-crypto';
+// The session summary shape is part of the public surface, so the memory double offers exactly
+// the same type the SQL implementation does.
+export type { SessionSummary } from './auth-crypto';
 
 // Re-export the real record and input shapes so application code sees exactly one set of types.
 // They are types only, so they cannot collide with the memory implementations above.

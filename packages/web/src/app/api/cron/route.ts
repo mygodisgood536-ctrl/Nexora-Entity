@@ -18,13 +18,21 @@ export const maxDuration = 300;
  * GET  /api/cron?status=1  report platform health without doing any work
  */
 export async function GET(request: Request) {
-  const secret = new URL(request.url).searchParams.get('secret') ?? '';
-  if (secret !== config().cronSecret) {
+  const url = new URL(request.url);
+  const supplied = url.searchParams.get('secret') ?? '';
+  // Vercel Cron authenticates with `Authorization: Bearer $CRON_SECRET`; a manual run uses the
+  // query parameter. Both are accepted, and a wrong secret is indistinguishable from a missing
+  // one so the endpoint reveals nothing about which is right.
+  const authorization = request.headers.get('authorization') ?? '';
+  const bearer = authorization.toLowerCase().startsWith('bearer ') ? authorization.slice(7).trim() : '';
+  const secret = supplied || bearer;
+
+  if (!secret || secret !== config().cronSecret) {
     // Deliberately vague: a wrong secret and a missing one must be indistinguishable.
     return NextResponse.json({ ok: false, error: { message: 'Not permitted.' } }, { status: 404 });
   }
 
-  if (new URL(request.url).searchParams.get('status') === '1') {
+  if (url.searchParams.get('status') === '1') {
     return NextResponse.json({ ok: true, data: await platformStatus() });
   }
 

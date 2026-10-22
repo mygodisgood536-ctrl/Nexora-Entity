@@ -105,6 +105,17 @@ export async function updateSecurityAnswer(
   );
 }
 
+/**
+ * Change the name on the account.
+ *
+ * The username is deliberately not changeable: it is half of the sign-in identity, and changing it
+ * would break the "stable identifier" the product promises. The full name is presentation and is
+ * safe to change.
+ */
+export async function updateUserFullName(userId: string, fullName: string): Promise<void> {
+  await query('UPDATE users SET full_name = $2, updated_at = now() WHERE id = $1', [userId, fullName]);
+}
+
 // ── Entities ─────────────────────────────────────────────────────────────
 
 export interface EntityRecord {

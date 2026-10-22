@@ -54,6 +54,9 @@ export {
   clearSessionCookie,
 } from './auth-crypto-core';
 export type { SessionRow, AuthenticatedUser } from './auth-crypto-core';
+// The session summary shape is shared by the SQL implementation and this double, so a test that
+// reads sessions sees the same thing either way.
+import type { SessionSummary } from './auth-crypto';
 import { mem, clone, now, num, json, dateOrNull, type Row } from './memory-store';
 import type { UserRecord, EntityRecord, StageProgressRecord } from './repos-core';
 
@@ -201,11 +204,22 @@ export async function updateSecurityAnswer(
   user.security_answer_salt = input.salt;
 }
 
+/**
+ * Change the name on the account. The username is deliberately not changeable: it is half of the
+ * sign-in identity, and changing it would break the stable identifier the product promises.
+ */
+export async function updateUserFullName(userId: string, fullName: string): Promise<void> {
+  const user = byId<UserRecord>('users', userId);
+  if (!user) return;
+  user.full_name = fullName;
+}
+
 // ── sessions ─────────────────────────────────────────────────────────────────
 interface SessionRow {
   id: string;
   user_id: string;
   token_hash: string;
+  created_at: Date;
   expires_at: Date;
   revoked_at: Date | null;
   ip: string | null;
@@ -227,6 +241,8 @@ export async function createSession(
     id: uid(),
     user_id: userId,
     token_hash: hashToken(token),
+    // The SQL table records when a session was created, and the account screen sorts by it.
+    created_at: now(),
     expires_at: expiresAt,
     revoked_at: null,
     ip: meta.ip ?? null,
@@ -261,6 +277,48 @@ export async function revokeAllSessions(userId: string): Promise<void> {
   for (const row of table('auth_sessions')) {
     if (row['user_id'] === userId && !row['revoked_at']) row['revoked_at'] = now();
   }
+}
+
+/**
+ * Every session belonging to a person, newest first.
+ *
+ * Mirrors the SQL implementation so a test exercises the same shape either way. The raw token is
+ * never exposed; the current session is identified by comparing token hashes.
+ */
+export async function listSessionsForUser(
+  userId: string,
+  currentTokenHash?: string,
+): Promise<SessionSummary[]> {
+  const all = table('auth_sessions');
+  // Newest first. Two sessions created in the same millisecond share a timestamp, so the
+  // insertion order breaks the tie and keeps the result stable and meaningful.
+  const rows = all
+    .map((r, index) => ({ r, index }))
+    .filter(({ r }) => r['user_id'] === userId)
+    .sort((a, b) => {
+      const at = new Date(String(a.r['created_at'])).getTime();
+      const bt = new Date(String(b.r['created_at'])).getTime();
+      if (bt !== at) return bt - at;
+      return b.index - a.index;
+    })
+    .map(({ r }) => r);
+  return rows.map((r) => ({
+    id: String(r['id']),
+    createdAt: new Date(String(r['created_at'])),
+    expiresAt: new Date(String(r['expires_at'])),
+    revokedAt: r['revoked_at'] ? new Date(String(r['revoked_at'])) : null,
+    ip: typeof r['ip'] === 'string' ? r['ip'] : null,
+    userAgent: typeof r['user_agent'] === 'string' ? r['user_agent'] : null,
+    current: currentTokenHash ? r['token_hash'] === currentTokenHash : false,
+  }));
+}
+
+/** Revoke one session by identifier. Returns false when the session is not the person's. */
+export async function revokeSessionById(sessionId: string, userId: string): Promise<boolean> {
+  const row = table('auth_sessions').find((r) => r['id'] === sessionId && r['user_id'] === userId);
+  if (!row) return false;
+  if (!row['revoked_at']) row['revoked_at'] = now();
+  return true;
 }
 
 // ── entities ─────────────────────────────────────────────────────────────────

@@ -157,7 +157,10 @@ function load(): AppConfig {
       'NexoraEntityBot/1.0 (+https://nexoraentity.com/bot; entity source inspection)',
     httpMaxBytes: int(process.env.NEXORA_HTTP_MAX_BYTES, 3_000_000),
     httpMaxRedirects: int(process.env.NEXORA_HTTP_MAX_REDIRECTS, 5),
-    cronSecret: process.env.NEXORA_CRON_SECRET ?? 'nexora-entity-cron-development-secret',
+    // `CRON_SECRET` is the name Vercel Cron uses: it sends `Authorization: Bearer $CRON_SECRET`
+    // on every scheduled invocation. The platform-specific name is still accepted so a
+    // self-hosted deployment can use it.
+    cronSecret: process.env.NEXORA_CRON_SECRET ?? process.env.CRON_SECRET ?? 'nexora-entity-cron-development-secret',
     allowPlatformHostDeploy: bool(process.env.NEXORA_ALLOW_PLATFORM_HOST_DEPLOY, true),
     logLevel: (process.env.NEXORA_LOG_LEVEL as AppConfig['logLevel']) ?? 'info',
   };

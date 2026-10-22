@@ -67,6 +67,62 @@ export async function revokeSession(token: string): Promise<void> {
   await query('UPDATE auth_sessions SET revoked_at = now() WHERE token_hash = $1', [hashToken(token)]);
 }
 
+/**
+ * A session a person can see and revoke.
+ *
+ * The token itself is never exposed — only its hash-derived identifier and the metadata that
+ * helps a person recognise a session ("Chrome on Windows, signed in today").
+ */
+export interface SessionSummary {
+  id: string;
+  createdAt: Date;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  ip: string | null;
+  userAgent: string | null;
+  current: boolean;
+}
+
+/** Every session belonging to a person, newest first. */
+export async function listSessionsForUser(
+  userId: string,
+  currentTokenHash?: string,
+): Promise<SessionSummary[]> {
+  const rows = await query<{
+    id: string;
+    created_at: Date;
+    expires_at: Date;
+    revoked_at: Date | null;
+    ip: string | null;
+    user_agent: string | null;
+    token_hash: string;
+  }>(
+    `SELECT id, created_at, expires_at, revoked_at, ip, user_agent, token_hash
+       FROM auth_sessions
+      WHERE user_id = $1
+      ORDER BY created_at DESC`,
+    [userId],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    expiresAt: r.expires_at,
+    revokedAt: r.revoked_at,
+    ip: r.ip,
+    userAgent: r.user_agent,
+    current: currentTokenHash ? r.token_hash === currentTokenHash : false,
+  }));
+}
+
+/** Revoke one session by its identifier. The person must own it. */
+export async function revokeSessionById(sessionId: string, userId: string): Promise<boolean> {
+  const rows = await query<{ id: string }>(
+    'UPDATE auth_sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL RETURNING id',
+    [sessionId, userId],
+  );
+  return rows.length > 0;
+}
+
 export async function revokeAllSessions(userId: string): Promise<void> {
   await query('UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [
     userId,

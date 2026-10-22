@@ -20,6 +20,7 @@ import {
   getActiveAiConfiguration,
   getDeployment,
   hashSecurityAnswer,
+  hashToken,
   insertDomain,
   insertReviewItem,
   insertSource,
@@ -39,6 +40,9 @@ import {
   resolveSession,
   revokeAllSessions,
   revokeSession,
+  revokeSessionById,
+  listSessionsForUser,
+  updateUserFullName,
   saveStageProgress,
   sessionCookie,
   stageCounts,
@@ -60,11 +64,14 @@ const source = (entityId: string, url: string, kind = 'website') =>
   });
 
 /** Creates a user the way the real sign-up route does: hash the answer, then insert. */
-const user = () => {
+const user = () => userWith('ada');
+
+/** The same, with a distinct username, so a test can hold two accounts at once. */
+const userWith = (username: string) => {
   const { hash, salt } = hashSecurityAnswer('analytical engine');
   return insertUser({
     fullName: 'Ada Lovelace',
-    username: 'ada',
+    username,
     securityQuestion: 'First programming language',
     answerHash: hash,
     answerSalt: salt,
@@ -313,6 +320,70 @@ describe('in-memory repositories', () => {
       expect(await listReadinessRuns(e.id)).toEqual([]);
       expect(await latestReadyRun(e.id)).toBeNull();
       expect(await latestEvidenceMinimums(e.id)).toBeNull();
+    });
+  });
+
+  describe('account and session management', () => {
+    it('lists the sessions belonging to a person, newest first', async () => {
+      const u = await user();
+      const first = await createSession(u.id, { ip: '10.0.0.1', userAgent: 'First' });
+      await createSession(u.id, { ip: '10.0.0.2', userAgent: 'Second' });
+
+      const sessions = await listSessionsForUser(u.id);
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0]?.userAgent).toBe('Second');
+      expect(sessions[0]?.ip).toBe('10.0.0.2');
+      expect(sessions[1]?.userAgent).toBe('First');
+      // The raw token is never exposed.
+      expect(JSON.stringify(sessions)).not.toContain(first.token);
+    });
+
+    it('marks the session the person is currently using', async () => {
+      const u = await user();
+      const a = await createSession(u.id);
+      await createSession(u.id);
+
+      const withoutCurrent = await listSessionsForUser(u.id);
+      expect(withoutCurrent.every((s) => s.current === false)).toBe(true);
+
+      const sessions = await listSessionsForUser(u.id, hashToken(a.token));
+      expect(sessions.filter((s) => s.current)).toHaveLength(1);
+    });
+
+    it('revokes one session without ending the others', async () => {
+      const u = await user();
+      const first = await createSession(u.id);
+      await createSession(u.id);
+
+      const sessions = await listSessionsForUser(u.id);
+      const target = sessions[0]!;
+      expect(await revokeSessionById(target.id, u.id)).toBe(true);
+
+      const after = await listSessionsForUser(u.id);
+      expect(after.find((s) => s.id === target.id)?.revokedAt).not.toBeNull();
+      expect(after.find((s) => s.id !== target.id)?.revokedAt).toBeNull();
+      // The revoked session no longer authenticates.
+      expect(await resolveSession(first.token)).not.toBeNull();
+    });
+
+    it('refuses to revoke a session that belongs to somebody else', async () => {
+      const u = await user();
+      const other = await userWith('grace');
+      const session = await createSession(other.id);
+      const sessions = await listSessionsForUser(other.id);
+
+      expect(await revokeSessionById(sessions[0]!.id, u.id)).toBe(false);
+      expect((await listSessionsForUser(other.id))[0]?.revokedAt).toBeNull();
+      expect(await resolveSession(session.token)).not.toBeNull();
+    });
+
+    it('changes the name on the account but never the username', async () => {
+      const u = await user();
+      const before = await findUserByUsername(u.username);
+      await updateUserFullName(u.id, 'Ada Byron Lovelace');
+      const after = await findUserByUsername(u.username);
+      expect(after?.full_name).toBe('Ada Byron Lovelace');
+      expect(after?.username).toBe(before?.username);
     });
   });
 });

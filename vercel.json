@@ -4,6 +4,12 @@
     "buildCommand": "cd packages/web && next build",
     "installCommand": "npm install --include=optional --include=dev --no-audit --no-fund",
     "outputDirectory": "packages/web/.next",
+    "crons": [
+        {
+            "path": "/api/cron",
+            "schedule": "0 3 * * *"
+        }
+    ],
     "github": {
         "silent": true
     },
