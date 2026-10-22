@@ -5,7 +5,7 @@ import {
   latestCompletedRun,
   listReviewItems,
 } from '@nexora/db';
-import { buildReadinessReport } from '@nexora/engine';
+import { buildReadinessReport, resolveAccountModel } from '@nexora/engine';
 import { requireUser } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +34,12 @@ export async function POST(request: Request) {
   try {
     const parent = await latestCompletedRun(entityId);
     const pending = await listReviewItems(entityId, true);
-    const report = await buildReadinessReport(entityId, 'second_pass');
+    // The account's verified provider/model produces the plain-language explanation of the
+    // result. It is advisory: the deterministic gate below still decides the verdict. An AI
+    // failure is collected, never fatal, so a provider problem cannot block a person's review.
+    const failures: { operation: string; message: string }[] = [];
+    const model = await resolveAccountModel(entityId);
+    const report = await buildReadinessReport(entityId, 'second_pass', { model, failures });
 
     const run = await createReadinessRun({
       entityId,
@@ -61,6 +66,8 @@ export async function POST(request: Request) {
         score: report.score,
         label: report.label,
         blocking: report.blockingIssues.length,
+        narrative: report.narrative ?? null,
+        aiFailures: failures,
       },
     });
   } catch (err) {

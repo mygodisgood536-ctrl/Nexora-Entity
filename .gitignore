@@ -25,3 +25,4 @@ playwright-report/
 artifacts/
 .vercel
 .env*
+tmp-*

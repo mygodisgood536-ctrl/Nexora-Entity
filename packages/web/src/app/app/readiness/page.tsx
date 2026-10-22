@@ -4,7 +4,7 @@ import {
   findEntityForUser,
   listReadinessRuns,
 } from '@nexora/db';
-import { buildReadinessReport } from '@nexora/engine';
+import { buildReadinessReport, resolveAccountModel } from '@nexora/engine';
 import { requireUser } from '@/lib/server';
 import ReadinessBoard from '@/components/readiness-board';
 
@@ -43,7 +43,10 @@ export default async function ReadinessPage({
   // and then reloads (a third), every click left three rows behind. Recording a review is an
   // explicit action performed by /api/readiness/run; this route only computes the current
   // picture for display.
-  const report = await buildReadinessReport(entity.id, 'second_pass');
+  // The account's verified provider/model adds the plain-language explanation. It never changes
+  // the verdict, and a provider failure leaves the deterministic result intact.
+  const model = await resolveAccountModel(entity.id);
+  const report = await buildReadinessReport(entity.id, 'second_pass', { model });
 
   const history = await listReadinessRuns(entity.id, 8);
 

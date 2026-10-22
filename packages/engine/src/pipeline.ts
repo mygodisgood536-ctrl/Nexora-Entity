@@ -79,8 +79,17 @@ import { runAmbiguityDetection } from './ambiguity';
 import { evaluateReadiness, type ReadinessReport } from './readiness';
 import { buildEntityGraph } from './graph';
 import { structuredDataFor } from './structured-data';
+import { discoverCandidatesFromSource, suggestAliases, assessAmbiguity, narrateReadiness } from './ai';
+import { resolveAccountModel, safeAi, type AiFailure, type AiFailureCollector } from './ai-runtime';
+import type { ModelRef } from '@nexora/opencode-bridge';
 
 const log = createLogger('engine:pipeline');
+
+/**
+ * Candidate kinds that describe a *relationship* to the person rather than a fact about them.
+ * They are queued for review as relationships so the review queue reads correctly.
+ */
+const RELATIONSHIP_CANDIDATE_TYPES = new Set(['organisation', 'project', 'product', 'alias']);
 
 export interface PipelineOptions {
   /** Re-inspect every source, even ones already inspected. */
@@ -186,7 +195,14 @@ export async function ingestStages(entityId: string, stageKeys?: StageKey[]): Pr
 export async function inspectSources(
   entityId: string,
   subject: SubjectProfile,
-  options: { force?: boolean; onProgress?: (m: string, p: number) => void } = {},
+  options: {
+    force?: boolean;
+    onProgress?: (m: string, p: number) => void;
+    /** The account's verified provider/model, when AI assistance is switched on. */
+    model?: ModelRef | null;
+    /** Where AI failures are collected. An AI failure is never thrown. */
+    failures?: AiFailureCollector;
+  } = {},
 ): Promise<{ inspected: number; unreadable: number }> {
   const stages = await listStageProgress(entityId);
   const wanted: { url: string; suppliedKind: string }[] = [];
@@ -338,6 +354,47 @@ export async function inspectSources(
         blocking: false,
       });
     }
+
+    // AI-assisted discovery. Anything the model proposes is a *review item*, never a fact
+    // (section 23): the person decides whether it is true, and until they do it is neither
+    // published nor counted as evidence. A provider failure is collected, not thrown.
+    if (options.model && result.inspected) {
+      const failures = (options.failures ??= []);
+      const candidates = await safeAi(failures, 'source_discovery', () =>
+        discoverCandidatesFromSource({
+          model: options.model as ModelRef,
+          subject: {
+            names: subject.names,
+            aliases: subject.aliases,
+            professions: subject.professions,
+            organizations: subject.organizations,
+          },
+          source: { url: canon.canonical, title: result.title ?? null, textExcerpt: result.textExcerpt ?? null },
+          inspection: result,
+        }),
+      );
+      for (const candidate of candidates ?? []) {
+        await insertReviewItem({
+          entityId,
+          kind: RELATIONSHIP_CANDIDATE_TYPES.has(candidate.type) ? 'discovered_relationship' : 'discovered_fact',
+          title: candidate.value,
+          detail: candidate.evidenceQuote || candidate.note || null,
+          proposed: {
+            type: candidate.type,
+            value: candidate.value,
+            confidence: candidate.confidence,
+            evidenceQuote: candidate.evidenceQuote,
+            sourceUrl: candidate.sourceUrl,
+            note: candidate.note,
+          },
+          sourceId: rec.id,
+          stageKey: 'P_social_profiles',
+          // Advisory: a discovered item is never allowed to block publication on its own, but it
+          // is never published without the person's agreement either.
+          blocking: false,
+        });
+      }
+    }
   }
 
   log.info('sources inspected', { entityId, inspected, unreadable });
@@ -394,7 +451,11 @@ export async function resolveDuplication(entityId: string): Promise<number> {
 }
 
 /** Step 4 — identity resolution for every inspected source. */
-export async function resolveIdentities(entityId: string, subject: SubjectProfile): Promise<number> {
+export async function resolveIdentities(
+  entityId: string,
+  subject: SubjectProfile,
+  options: { model?: ModelRef | null; failures?: AiFailureCollector } = {},
+): Promise<number> {
   const sources = await listSources(entityId);
   const prior = new Map((await listIdentityLinks(entityId)).map((l) => [l.source_id, l]));
   let resolved = 0;
@@ -461,6 +522,39 @@ export async function resolveIdentities(entityId: string, subject: SubjectProfil
     }
     resolved += 1;
   }
+
+  // AI-assisted alias reasoning. A name variant is never applied automatically: it is offered to
+  // the person as a review item, because only they can say whether a name is theirs
+  // (section 10, section 23).
+  if (options.model) {
+    const failures = (options.failures ??= []);
+    const observed = sources
+      .flatMap((s) => {
+        const names = s.extracted?.['names'];
+        return Array.isArray(names) ? names.map((n) => ({ name: String(n), sourceUrl: s.canonical_url })) : [];
+      })
+      .filter((n) => n.name.trim().length > 0);
+    const suggestions = await safeAi(failures, 'alias_suggestion', () =>
+      suggestAliases({
+        model: options.model as ModelRef,
+        entityName: subject.names[0] ?? '',
+        knownNames: [...subject.names, ...subject.aliases],
+        observedNames: observed,
+      }),
+    );
+    for (const suggestion of suggestions ?? []) {
+      await insertReviewItem({
+        entityId,
+        kind: 'discovered_relationship',
+        title: `Possible name variant: ${suggestion.value}`,
+        detail: suggestion.why || null,
+        proposed: { type: 'alias', value: suggestion.value, why: suggestion.why },
+        stageKey: 'B_name_variants',
+        blocking: false,
+      });
+    }
+  }
+
   log.info('identities resolved', { entityId, resolved });
   return resolved;
 }
@@ -725,7 +819,11 @@ function mergeConflicts(detected: ReturnType<typeof detectConflicts>): ReturnTyp
 }
 
 /** Step 7 — ambiguity detection. */
-export async function detectAndStoreAmbiguity(entityId: string, subject: SubjectProfile): Promise<number> {
+export async function detectAndStoreAmbiguity(
+  entityId: string,
+  subject: SubjectProfile,
+  options: { model?: ModelRef | null; failures?: AiFailureCollector } = {},
+): Promise<number> {
   const claims = await listClaims(entityId);
   const sources = await listSources(entityId);
   const links = await listIdentityLinks(entityId);
@@ -783,6 +881,49 @@ export async function detectAndStoreAmbiguity(entityId: string, subject: Subject
       blocking: a.severity === 'blocking',
     });
   }
+  // AI second opinion on ambiguity. The deterministic result stays authoritative: this can only add
+  // a review item that names what evidence would settle the question. It can never clear a
+  // deterministic ambiguity and it can never turn a resolved one into a problem.
+  if (options.model) {
+    const failures = (options.failures ??= []);
+    const assessment = await safeAi(failures, 'ambiguity_assessment', () =>
+      assessAmbiguity({
+        model: options.model as ModelRef,
+        entityName: subject.names[0] ?? '',
+        claims: claims.map((c) => ({
+          attributeKey: c.attribute_key,
+          value: c.value_text,
+          origin: c.origin,
+          status: c.status,
+        })),
+        sources: sources.map((s) => ({
+          url: s.canonical_url,
+          title: s.title,
+          accessStatus: s.access_status,
+          qualifies: s.qualifies_websites || s.qualifies_press,
+        })),
+        deterministicFindings: found.map((a) => ({ dimension: a.dimension, description: a.description })),
+      }),
+    );
+    if (assessment?.couldDescribeMultiplePeople) {
+      await insertReviewItem({
+        entityId,
+        kind: 'ambiguity',
+        title: 'Worth checking: could this describe someone else?',
+        detail: `${assessment.reason}\n\nWhat would settle it: ${assessment.missingDistinguishingEvidence.join(' ') || 'confirmation from you.'}`,
+        proposed: {
+          source: 'ai_second_opinion',
+          dimension: 'ai_ambiguity',
+          candidates: [],
+          missingEvidence: assessment.missingDistinguishingEvidence,
+          suggestedQuestions: assessment.suggestedQuestions,
+        },
+        stageKey: 'B_name_variants',
+        blocking: false,
+      });
+    }
+  }
+
   log.info('ambiguity assessed', { entityId, count: found.length });
   return found.length;
 }
@@ -873,9 +1014,21 @@ export async function recomputeEvidenceMinimums(entityId: string): Promise<{
 }
 
 /** Full deterministic run. */
-export async function runAnalysis(entityId: string, options: PipelineOptions = {}): Promise<Omit<PipelineResult, 'aiFailures'>> {
+export async function runAnalysis(
+  entityId: string,
+  options: PipelineOptions = {},
+): Promise<Omit<PipelineResult, 'aiFailures'> & { aiFailures: AiFailure[] }> {
   const started = Date.now();
   options.onProgress?.('Reading your information', 5);
+
+  // The account's verified provider/model powers the AI-assisted operations. It is resolved here
+  // rather than passed in, so every caller - a stage save, a manual re-check, the scheduled
+  // maintenance run - uses the person's active configuration automatically.
+  const failures: AiFailureCollector = [];
+  const model = options.useAi === false ? null : (options.model ?? (await resolveAccountModel(entityId)));
+  if (options.useAi !== false && !model) {
+    log.info('no verified AI configuration; running the deterministic analysis only', { entityId });
+  }
 
   await ingestStages(entityId, options.stageKeys);
   const claims = await listClaims(entityId);
@@ -885,13 +1038,15 @@ export async function runAnalysis(entityId: string, options: PipelineOptions = {
   const inspect = await inspectSources(entityId, subject, {
     force: options.forceReinspect,
     onProgress: options.onProgress,
+    model,
+    failures,
   });
 
   options.onProgress?.('Checking for duplicate and copied sources', 45);
   await resolveDuplication(entityId);
 
   options.onProgress?.('Working out which sources represent you', 55);
-  const identities = await resolveIdentities(entityId, subject);
+  const identities = await resolveIdentities(entityId, subject, { model, failures });
 
   options.onProgress?.('Recording where every piece of information came from', 65);
   await buildProvenance(entityId);
@@ -906,13 +1061,13 @@ export async function runAnalysis(entityId: string, options: PipelineOptions = {
   const conflicts = await detectAndStoreConflicts(entityId);
 
   options.onProgress?.('Checking whether this could describe more than one person', 82);
-  const ambiguities = await detectAndStoreAmbiguity(entityId, subject);
+  const ambiguities = await detectAndStoreAmbiguity(entityId, subject, { model, failures });
 
   options.onProgress?.('Checking your evidence', 88);
   const minimums = await recomputeEvidenceMinimums(entityId);
 
   options.onProgress?.('Running the Entity Readiness review', 94);
-  const readiness = await buildReadinessReport(entityId);
+  const readiness = await buildReadinessReport(entityId, 'standard', { model, failures });
 
   const pendingReview = await countPendingReviewItems(entityId);
   const entity = await findEntityById(entityId);
@@ -922,7 +1077,14 @@ export async function runAnalysis(entityId: string, options: PipelineOptions = {
     entityId,
     action: 'analysis.completed',
     actor: 'system',
-    detail: { inspected: inspect.inspected, unreadable: inspect.unreadable, conflicts, ambiguities, score: readiness.score },
+    detail: {
+      inspected: inspect.inspected,
+      unreadable: inspect.unreadable,
+      conflicts,
+      ambiguities,
+      score: readiness.score,
+      aiFailures: failures.length,
+    },
   });
 
   return {
@@ -937,6 +1099,7 @@ export async function runAnalysis(entityId: string, options: PipelineOptions = {
     pendingReview,
     provenance,
     readiness,
+    aiFailures: failures,
     durationMs: Date.now() - started,
   };
 }
@@ -975,7 +1138,11 @@ export async function buildGraph(entityId: string, entityName: string, entityUid
 }
 
 /** Assemble the readiness report from persisted state. */
-export async function buildReadinessReport(entityId: string, kind: 'standard' | 'second_pass' = 'standard'): Promise<ReadinessReport> {
+export async function buildReadinessReport(
+  entityId: string,
+  kind: 'standard' | 'second_pass' = 'standard',
+  options: { model?: ModelRef | null; failures?: AiFailureCollector } = {},
+): Promise<ReadinessReport> {
   const [claims, sources, photos, stages, conflicts, ambiguities, links, portfolioFiles, reviewItems, minima] = await Promise.all([
     listClaims(entityId),
     listSources(entityId),
@@ -1000,7 +1167,7 @@ export async function buildReadinessReport(entityId: string, kind: 'standard' | 
 
   const sd = structuredDataFor({ claims, sources, photos, identityLinks: links });
 
-  return evaluateReadiness({
+  const report = evaluateReadiness({
     kind,
     entityName: primaryName,
     claims,
@@ -1024,6 +1191,28 @@ export async function buildReadinessReport(entityId: string, kind: 'standard' | 
     liveDeployment: false,
     liveDeploymentTarget: null,
   });
+
+  // The narrative explains the deterministic result in plain language. It never changes the
+  // verdict: the deterministic gate is the only thing that can decide readiness.
+  if (options.model) {
+    const failures = (options.failures ??= []);
+    const narrative = await safeAi(failures, 'readiness_narration', () =>
+      narrateReadiness({
+        model: options.model as ModelRef,
+        entityName: primaryName,
+        deterministicStatus: report.status === 'ready' ? 'ready' : 'blocked',
+        score: report.score,
+        blockingIssues: report.blockingIssues.map((b) => ({ title: b.title, detail: b.detail, action: b.action })),
+        warnings: report.warnings.map((w) => ({ title: w.title, detail: w.detail })),
+        completenessNarrative: report.completeness.narrative,
+      }),
+    );
+    if (narrative) {
+      return { ...report, narrative: { ...narrative, verdict: report.status === 'ready' ? 'ready' : 'blocked' } };
+    }
+  }
+
+  return report;
 }
 
 export { setSourcePublished, ReadinessCheckId, Severity, ReviewKind };

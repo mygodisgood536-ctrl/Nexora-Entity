@@ -92,13 +92,69 @@ const CONTRAST_PROBE = () => {
     a: 1,
   });
 
+  /**
+   * The colour a gradient actually paints behind the text.
+   *
+   * A surface whose background is a gradient has no meaningful `background-color`, so measuring
+   * against it reports a contrast ratio of about 1 and condemns text that is plainly readable.
+   *
+   * Two rules keep this honest:
+   *   - a gradient is only used when every one of its colour stops is fully opaque. A decorative
+   *     translucent overlay (the page's radial glow) is not the backdrop; the element's own
+   *     background colour underneath it is.
+   *   - the gradient is painted over the element's background colour, in that order, exactly as
+   *     the browser paints them.
+   */
+  const parseHex = (input) => {
+    const m = String(input).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!m) return null;
+    const hex = m[1].length === 3 ? m[1].split('').map((c) => c + c).join('') : m[1];
+    return {
+      r: Number.parseInt(hex.slice(0, 2), 16),
+      g: Number.parseInt(hex.slice(2, 4), 16),
+      b: Number.parseInt(hex.slice(4, 6), 16),
+      a: 1,
+    };
+  };
+
+  const gradientAverage = (image) => {
+    const stops = [];
+    const re = /#[0-9a-f]{3,6}\b|rgba?\([^)]*\)|\btransparent\b/gi;
+    let m;
+    while ((m = re.exec(image)) !== null) {
+      const token = m[0];
+      if (/^transparent$/i.test(token)) return null; // a translucent overlay, not a backdrop
+      const c = parse(token) ?? parseHex(token);
+      if (!c) return null;
+      if (c.a < 1) return null;
+      stops.push(c);
+    }
+    if (stops.length === 0) return null;
+    const n = stops.length;
+    return {
+      r: stops.reduce((s, c) => s + c.r, 0) / n,
+      g: stops.reduce((s, c) => s + c.g, 0) / n,
+      b: stops.reduce((s, c) => s + c.b, 0) / n,
+      a: 1,
+    };
+  };
+
   const effectiveBg = (el) => {
     let node = el;
     let acc = null;
     while (node && node.nodeType === 1) {
-      const c = parse(getComputedStyle(node).backgroundColor);
-      if (c && c.a > 0) {
-        acc = acc === null ? c : over(acc, c);
+      const style = getComputedStyle(node);
+      // The element's own background colour is the base layer.
+      const base = parse(style.backgroundColor);
+      let layer = base && base.a > 0 ? base : null;
+      // Its background image is painted over that base.
+      const image = style.backgroundImage;
+      if (image && image !== 'none') {
+        const avg = gradientAverage(image);
+        if (avg) layer = layer ? over(avg, layer) : avg;
+      }
+      if (layer) {
+        acc = acc === null ? layer : over(acc, layer);
         if (acc.a >= 0.999) return acc;
       }
       node = node.parentElement;
@@ -182,13 +238,28 @@ const describe = (el) =>
 
 const findings = { screens: [], contrast: [], focus: [], overflow: [], motion: null, notes: [] };
 
-async function auditScreen(context, label, route, { interactive = true, waitUntil = 'networkidle' } = {}) {
+/**
+ * Navigate and wait for the page to have actually rendered.
+ *
+ * `networkidle` is not a reliable signal against a hosted deployment: the platform keeps
+ * connections alive between requests, so the network never truly goes idle and the wait times out
+ * on a page that has already rendered. The document being ready and the application's own main
+ * region being present is both a stronger and a faster signal.
+ */
+async function open(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+  await page.waitForSelector('#main, body', { state: 'attached', timeout: 30_000 });
+  await page.waitForTimeout(300);
+}
+
+async function auditScreen(context, label, route, { interactive = true } = {}) {
   const page = await context.newPage();
   const record = { label, path: route, shots: [], status: null, error: null };
 
   try {
-    const response = await page.goto(`${BASE}${route}`, { waitUntil, timeout: 60_000 });
+    const response = await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     record.status = response ? response.status() : null;
+    await page.waitForSelector('#main, body', { state: 'attached', timeout: 30_000 });
     await page.waitForTimeout(400);
 
     for (const bp of BREAKPOINTS) {
@@ -335,7 +406,7 @@ async function audit() {
   try {
     /* 1. sign up for real (§34: signup must work) */
     const auth = await context.newPage();
-    await auth.goto(`${BASE}/signup`, { waitUntil: 'networkidle' });
+    await open(auth, `${BASE}/signup`);
     const signupResult = await auth.evaluate(async (u) => {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -360,7 +431,7 @@ async function audit() {
 
     /* 2. sign in for real (§34: login must work) */
     const session = await context.newPage();
-    await session.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+    await open(session, `${BASE}/login`);
     const loginResult = await session.evaluate(async (u) => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -377,7 +448,7 @@ async function audit() {
       findings.notes.push(`LOGIN_FAILED: ${JSON.stringify(loginResult).slice(0, 200)}`);
     }
     // login sets the session cookie; navigate to /app as the signed-in user.
-    await session.goto(`${BASE}/app`, { waitUntil: 'networkidle' });
+    await open(session, `${BASE}/app`);
     const appUrl = session.url();
     if (/securityAnswer|fullName|username/i.test(appUrl)) {
       findings.notes.push(`SECURITY: credentials leaked into the URL after login: ${appUrl}`);
@@ -394,7 +465,7 @@ async function audit() {
 
     // Create an entity so the studio screens can be reached, then record its id/slug.
     const probe = await context.newPage();
-    await probe.goto(`${BASE}/app`, { waitUntil: 'networkidle' });
+    await open(probe, `${BASE}/app`);
     let entityId = null;
     let slug = null;
     try {
@@ -432,7 +503,7 @@ async function audit() {
     });
     await rmContext.addCookies(await context.cookies());
     const rmPage = await rmContext.newPage();
-    await rmPage.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+    await open(rmPage, `${BASE}/login`);
     findings.motion = await rmPage.evaluate(() => {
       const sample = document.querySelector('.nx-skeleton') || document.body;
       const cs = getComputedStyle(sample);

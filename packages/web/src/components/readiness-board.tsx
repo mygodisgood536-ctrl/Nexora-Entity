@@ -46,6 +46,14 @@ interface Report {
       photos: { required: number; qualifying: number; met: boolean };
     };
   };
+  /** The plain-language explanation. Advisory: it never changes `status`. */
+  narrative?: {
+    verdict: 'ready' | 'blocked';
+    headline: string;
+    whatIsMissing: string[];
+    whatIsUncertain: string[];
+    encouragement: string;
+  };
 }
 
 const OUTCOME_LABEL: Record<Check['outcome'], { label: string; cls: string }> = {
@@ -116,6 +124,41 @@ export default function ReadinessBoard({ report, entityId }: { report: Report; e
           />
         </div>
         <p className="text-sm leading-relaxed text-ink-600">{report.summary}</p>
+
+        {/* The plain-language explanation of the result. It is written by the account's verified
+            model and is advisory: the verdict above is the deterministic one. */}
+        {report.narrative ? (
+          <div className="nx-notice nx-notice--info">
+            <p className="text-sm font-semibold text-ink-900">{report.narrative.headline}</p>
+            {report.narrative.whatIsMissing.length > 0 ? (
+              <>
+                <p className="mt-2 text-xs font-medium text-ink-700">What is still missing</p>
+                <ul className="nx-list nx-stack-sm mt-1">
+                  {report.narrative.whatIsMissing.map((item) => (
+                    <li key={item} className="text-xs leading-relaxed text-ink-600">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {report.narrative.whatIsUncertain.length > 0 ? (
+              <>
+                <p className="mt-2 text-xs font-medium text-ink-700">Not yet solid</p>
+                <ul className="nx-list nx-stack-sm mt-1">
+                  {report.narrative.whatIsUncertain.map((item) => (
+                    <li key={item} className="text-xs leading-relaxed text-ink-600">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {report.narrative.encouragement ? (
+              <p className="mt-2 text-xs leading-relaxed text-ink-600">{report.narrative.encouragement}</p>
+            ) : null}
+          </div>
+        ) : null}
         {error ? (
           <div className="nx-notice nx-notice--stop" role="alert">
             <p className="font-semibold">{error.message}</p>

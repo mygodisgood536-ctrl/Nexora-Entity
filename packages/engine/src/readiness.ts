@@ -94,6 +94,19 @@ export interface ReadinessReport {
   completeness: CompletenessResult;
   disclaimer: string;
   evidenceNotice: string;
+  /**
+   * The plain-language explanation of this result.
+   *
+   * Advisory only: it is produced by the account's verified model and can never change `status`
+   * or `score`. The deterministic gate is the only thing that decides readiness.
+   */
+  narrative?: {
+    verdict: 'ready' | 'blocked';
+    headline: string;
+    whatIsMissing: string[];
+    whatIsUncertain: string[];
+    encouragement: string;
+  };
 }
 
 /** Weights: how much each check contributes to the readiness percentage. */
