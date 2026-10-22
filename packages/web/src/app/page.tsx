@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from '@nexora/core';
+import ThemeToggle from '@/components/theme-toggle';
 
 /** Marketing front door. States plainly what the product does and what it does not promise. */
 export default function HomePage() {
@@ -10,13 +11,14 @@ export default function HomePage() {
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent-600 to-teal-700 text-[0.65rem] font-bold text-ink-950"
+              className="nx-brandmark grid h-8 w-8 place-items-center rounded-lg text-[0.65rem] font-bold"
             >
               NE
             </span>
             <span className="font-display text-[1.05rem] tracking-tight text-ink-900">{PRODUCT_NAME}</span>
           </div>
           <nav className="flex items-center gap-2">
+            <ThemeToggle />
             <Link href="/login" className="nx-btn nx-btn--ghost nx-btn--sm">
               Sign in
             </Link>

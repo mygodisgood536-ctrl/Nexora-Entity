@@ -3,43 +3,50 @@
 /* Nexora Entity platform theme.
    The platform application and the public Entity Website share one visual language, built to the
    standard of the mandatory design reference (https://cornelius-adedeji-victor-website.vercel.app):
-   a deep navy canvas, a variable serif for display headlines, Inter for body copy, a mono face for
-   eyebrows and identifiers, and a periwinkle accent with a teal secondary.
+   a variable serif for display headlines, Inter for body copy, a mono face for eyebrows and
+   identifiers, and a periwinkle accent with a teal secondary.
 
-   Note on the neutral ramp: the `ink-*` scale is deliberately *inverted* relative to a light theme
-   because the whole product is a dark surface. `ink-900` is the strongest foreground (near-white)
-   and `ink-50`/`ink-100` are the elevated surfaces and hairlines. This keeps every existing
-   `text-ink-900` / `bg-ink-50` / `border-ink-100` usage meaningful without rewriting components. */
+   The product is offered in two themes, and each one is designed rather than inverted.
 
-@theme {
-  --color-ink-950: #05070d;
-  --color-ink-900: #f4f7fd;
-  --color-ink-800: #e4ebf7;
-  --color-ink-700: #c9d4e6;
-  --color-ink-600: #b0bccf;
-  --color-ink-500: #98a6bf;
-  --color-ink-400: #8e9bb3;
-  --color-ink-300: #74829e;
-  --color-ink-200: #2b3550;
-  --color-ink-100: #232d47;
-  --color-ink-50: #151d31;
-  --color-paper: #070a12;
+   Light mode is predominantly white: a near-white page, pale neutral surfaces, hairline borders and
+   a deep periwinkle accent, so the brand colour is used for actions and emphasis rather than for
+   every surface. Dark mode is the reference language: a deep navy canvas with brighter periwinkle
+   and teal, which is what the accent needs in order to stay legible on a dark ground.
 
-  --color-accent-700: #a5bcff;
-  --color-accent-600: #7c9cff;
-  --color-accent-500: #9cb3ff;
-  --color-accent-100: #33406e;
-  --color-accent-50: #1b2440;
+   The `ink-*` scale is semantic rather than literal. `ink-900` is always the strongest
+   foreground, `ink-600` body copy, and `ink-50`/`ink-100` are the surfaces and hairlines. That
+   keeps every `text-ink-900` / `bg-ink-50` / `border-ink-100` usage meaningful in both themes
+   without rewriting a single component. */
 
-  --color-teal-700: #5fd6c4;
-  --color-teal-50: #0d2b28;
+@theme inline {
+  --nx-ink-950: var(--nx-ink-950);
+  --nx-ink-900: var(--nx-ink-900);
+  --nx-ink-800: var(--nx-ink-800);
+  --nx-ink-700: var(--nx-ink-700);
+  --nx-ink-600: var(--nx-ink-600);
+  --nx-ink-500: var(--nx-ink-500);
+  --nx-ink-400: var(--nx-ink-400);
+  --nx-ink-300: var(--nx-ink-300);
+  --nx-ink-200: var(--nx-ink-200);
+  --nx-ink-100: var(--nx-ink-100);
+  --nx-ink-50: var(--nx-ink-50);
+  --nx-paper: var(--nx-paper);
 
-  --color-good-700: #5fd6c4;
-  --color-good-50: #0d2b28;
-  --color-warn-700: #f0b866;
-  --color-warn-50: #2c2410;
-  --color-stop-700: #f79a9a;
-  --color-stop-50: #2e1616;
+  --nx-accent-700: var(--nx-accent-700);
+  --nx-accent-600: var(--nx-accent-600);
+  --nx-accent-500: var(--nx-accent-500);
+  --nx-accent-100: var(--nx-accent-100);
+  --nx-accent-50: var(--nx-accent-50);
+
+  --nx-teal-700: var(--nx-teal-700);
+  --nx-teal-50: var(--nx-teal-50);
+
+  --nx-good-700: var(--nx-good-700);
+  --nx-good-50: var(--nx-good-50);
+  --nx-warn-700: var(--nx-warn-700);
+  --nx-warn-50: var(--nx-warn-50);
+  --nx-stop-700: var(--nx-stop-700);
+  --nx-stop-50: var(--nx-stop-50);
 
   --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, 'Times New Roman', serif;
@@ -47,17 +54,136 @@
 }
 
 :root {
+  /* Light theme. A near-white page with pale neutral surfaces and a deep periwinkle accent. */
+  --nx-paper: #ffffff;
+  --nx-ink-950: #05070d;
+  --nx-ink-900: #101828;
+  --nx-ink-800: #1f2937;
+  --nx-ink-700: #344054;
+  --nx-ink-600: #475467;
+  --nx-ink-500: #616c80;
+  /* `ink-400` is used for small secondary copy — URLs, notes, field hints — so it has to clear
+     4.5:1 on a white page, not merely look muted. */
+  --nx-ink-400: #5d6b80;
+  --nx-ink-300: #6b7688;
+  --nx-ink-200: #d0d5dd;
+  --nx-ink-100: #e4e7ec;
+  --nx-ink-50: #f7f8fb;
+
+  --nx-accent-700: #2c46b0;
+  --nx-accent-600: #3d5bd8;
+  --nx-accent-500: #5570e0;
+  --nx-accent-100: #dde4fb;
+  --nx-accent-50: #f2f5ff;
+
+  --nx-teal-700: #0f7d6e;
+  --nx-teal-50: #e6f7f4;
+
+  --nx-good-700: #0f766e;
+  --nx-good-50: #e7f7f3;
+  --nx-warn-700: #905400;
+  --nx-warn-50: #fdf3e3;
+  --nx-stop-700: #b42318;
+  --nx-stop-50: #fef0ef;
+
+  /* The primary action is a filled brand button: white ink on the deep accent. */
+  --nx-btn-primary-from: #5570e0;
+  --nx-btn-primary-to: #3d5bd8;
+  --nx-btn-primary-ink: #ffffff;
+  --nx-btn-primary-shadow: rgba(61, 91, 216, 0.32);
+  /* The accent action is a tinted surface with a strong accent ink, not a second brand colour. */
+  --nx-btn-accent-from: #ffffff;
+  --nx-btn-accent-to: #eef2ff;
+  --nx-btn-accent-ink: #2c46b0;
+  --nx-btn-accent-shadow: rgba(61, 91, 216, 0.18);
+  /* The brand mark carries the brand gradient in both themes, with ink chosen for legibility. */
+  --nx-brand-from: #5570e0;
+  --nx-brand-to: #14a08d;
+  --nx-brand-ink: #ffffff;
+
+  --nx-veil: rgba(16, 24, 40, 0.04);
+  --nx-veil-strong: rgba(16, 24, 40, 0.07);
+  --nx-scrim: rgba(16, 24, 40, 0.55);
+  --nx-grid-line: rgba(16, 24, 40, 0.06);
+  --nx-glow-accent: rgba(93, 112, 224, 0.16);
+  --nx-glow-teal: rgba(20, 160, 141, 0.12);
+  --nx-field-bg: #ffffff;
+  --nx-field-focus-bg: #fbfcff;
+  --nx-track-fill: rgba(16, 24, 40, 0.08);
+  --nx-scrollbar-thumb: #d0d5dd;
+  --nx-scrollbar-track: #f2f4f7;
+
   --nx-shell: 1240px;
   --nx-shell-narrow: 940px;
   --nx-radius: 12px;
   --nx-radius-lg: 18px;
-  --nx-shadow-card: 0 1px 2px rgba(3, 6, 14, 0.4), 0 18px 48px -28px rgba(3, 6, 14, 0.9);
-  --nx-shadow-pop: 0 24px 70px -30px rgba(3, 6, 14, 0.95), 0 0 0 1px rgba(150, 168, 205, 0.12);
+  --nx-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05), 0 12px 32px -20px rgba(16, 24, 40, 0.24);
+  --nx-shadow-pop: 0 24px 60px -28px rgba(16, 24, 40, 0.34), 0 0 0 1px rgba(16, 24, 40, 0.08);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* The dark theme is the reference language: a deep navy canvas with a brighter periwinkle, which is
+   what the accent has to be in order to stay legible on a dark ground. */
+[data-theme='dark'] {
+  --nx-paper: #070a12;
+  --nx-ink-950: #05070d;
+  --nx-ink-900: #f4f7fd;
+  --nx-ink-800: #e4ebf7;
+  --nx-ink-700: #c9d4e6;
+  --nx-ink-600: #b0bccf;
+  --nx-ink-500: #98a6bf;
+  --nx-ink-400: #8e9bb3;
+  --nx-ink-300: #74829e;
+  --nx-ink-200: #2b3550;
+  --nx-ink-100: #232d47;
+  --nx-ink-50: #151d31;
+
+  --nx-accent-700: #a5bcff;
+  --nx-accent-600: #7c9cff;
+  --nx-accent-500: #9cb3ff;
+  --nx-accent-100: #33406e;
+  --nx-accent-50: #1b2440;
+
+  --nx-teal-700: #5fd6c4;
+  --nx-teal-50: #0d2b28;
+
+  --nx-good-700: #5fd6c4;
+  --nx-good-50: #0d2b28;
+  --nx-warn-700: #f0b866;
+  --nx-warn-50: #2c2410;
+  --nx-stop-700: #f79a9a;
+  --nx-stop-50: #2e1616;
+
+  --nx-btn-primary-from: #8ea9ff;
+  --nx-btn-primary-to: #7c9cff;
+  --nx-btn-primary-ink: #0a1024;
+  --nx-btn-primary-shadow: rgba(124, 156, 255, 0.8);
+  --nx-btn-accent-from: #ffffff;
+  --nx-btn-accent-to: #d9e2ff;
+  --nx-btn-accent-ink: #0a1024;
+  --nx-btn-accent-shadow: rgba(124, 156, 255, 0.85);
+  --nx-brand-from: #7c9cff;
+  --nx-brand-to: #5fd6c4;
+  --nx-brand-ink: #0a1024;
+
+  --nx-veil: rgba(255, 255, 255, 0.04);
+  --nx-veil-strong: rgba(255, 255, 255, 0.07);
+  --nx-scrim: rgba(3, 6, 14, 0.7);
+  --nx-grid-line: rgba(150, 168, 205, 0.08);
+  --nx-glow-accent: rgba(124, 156, 255, 0.1);
+  --nx-glow-teal: rgba(95, 214, 196, 0.06);
+  --nx-field-bg: rgba(11, 16, 32, 0.8);
+  --nx-field-focus-bg: #0b1020;
+  --nx-track-fill: rgba(255, 255, 255, 0.08);
+  --nx-scrollbar-thumb: #23304a;
+  --nx-scrollbar-track: #05070d;
+
+  --nx-shadow-card: 0 1px 2px rgba(3, 6, 14, 0.4), 0 18px 48px -28px rgba(3, 6, 14, 0.9);
+  --nx-shadow-pop: 0 24px 70px -30px rgba(3, 6, 14, 0.95), 0 0 0 1px rgba(150, 168, 205, 0.12);
+}
+
 * {
-  border-color: var(--color-ink-100);
+  border-color: var(--nx-ink-100);
 }
 
 html {
@@ -74,12 +200,12 @@ html {
 }
 
 body {
-  background-color: var(--color-paper);
+  background-color: var(--nx-paper);
   background-image:
-    radial-gradient(1100px 620px at 82% -8%, rgba(124, 156, 255, 0.1), transparent 62%),
-    radial-gradient(900px 520px at -12% 6%, rgba(95, 214, 196, 0.06), transparent 58%);
+    radial-gradient(1100px 620px at 82% -8%, var(--nx-glow-accent), transparent 62%),
+    radial-gradient(900px 520px at -12% 6%, var(--nx-glow-teal), transparent 58%);
   background-attachment: fixed;
-  color: var(--color-ink-700);
+  color: var(--nx-ink-600);
   font-family: var(--font-sans);
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;
@@ -89,14 +215,14 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent-700);
+  outline: 2px solid var(--nx-accent-700);
   outline-offset: 3px;
   border-radius: 6px;
 }
 
 ::selection {
-  background: var(--color-accent-600);
-  color: #0a1024;
+  background: var(--nx-accent-600);
+  color: var(--nx-brand-ink);
 }
 
 ::-webkit-scrollbar {
@@ -105,17 +231,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #05070d;
+  background: var(--nx-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #23304a;
-  border: 2px solid #05070d;
+  background: var(--nx-scrollbar-thumb);
+  border: 2px solid var(--nx-scrollbar-track);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #33456a;
+  background: var(--nx-ink-300);
 }
 
 /* ── Typography scale ─────────────────────────────────────────────────── */
@@ -126,7 +252,7 @@ body {
   line-height: 1.04;
   letter-spacing: -0.028em;
   font-weight: 500;
-  color: var(--color-ink-900);
+  color: var(--nx-ink-900);
   text-wrap: balance;
 }
 
@@ -136,14 +262,14 @@ body {
   line-height: 1.16;
   letter-spacing: -0.018em;
   font-weight: 500;
-  color: var(--color-ink-900);
+  color: var(--nx-ink-900);
   text-wrap: balance;
 }
 
 .nx-subtitle {
   font-size: clamp(1.02rem, 0.98rem + 0.4vw, 1.18rem);
   line-height: 1.7;
-  color: var(--color-ink-600);
+  color: var(--nx-ink-600);
   max-width: 62ch;
   text-wrap: pretty;
 }
@@ -151,7 +277,7 @@ body {
 .nx-lede {
   font-size: clamp(1.02rem, 1.55vw, 1.2rem);
   line-height: 1.7;
-  color: var(--color-ink-600);
+  color: var(--nx-ink-600);
   text-wrap: pretty;
 }
 
@@ -161,7 +287,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--color-ink-400);
+  color: var(--nx-ink-400);
 }
 
 .nx-mono {
@@ -273,13 +399,13 @@ body {
    accessibility affordance (`aria-pressed`), so the highlight is driven off that attribute rather
    than a parallel piece of component state that could drift out of sync with it. */
 .nx-selectable[aria-pressed='true'] {
-  border-color: var(--color-accent-600);
-  box-shadow: 0 0 0 3px var(--color-accent-50);
+  border-color: var(--nx-accent-600);
+  box-shadow: 0 0 0 3px var(--nx-accent-50);
 }
 
 /* The chosen row inside a radio list. */
 .nx-option--on {
-  background: var(--color-accent-50);
+  background: var(--nx-accent-50);
 }
 
 /* A large readout numeral, used for scores, counts and the readiness result. */
@@ -289,7 +415,7 @@ body {
   line-height: 1.12;
   font-weight: 500;
   letter-spacing: -0.015em;
-  color: var(--color-ink-900);
+  color: var(--nx-ink-900);
   text-wrap: balance;
 }
 
@@ -309,13 +435,13 @@ body {
 
 /* An inline link inside body copy, e.g. a published URL. */
 .nx-link {
-  color: var(--color-accent-700);
+  color: var(--nx-accent-700);
   text-decoration: none;
   transition: color 0.18s var(--ease);
 }
 
 .nx-link:hover {
-  color: var(--color-ink-900);
+  color: var(--nx-ink-900);
   text-decoration: underline;
 }
 
@@ -325,7 +451,7 @@ body {
   width: 100%;
   height: 85vh;
   border: 0;
-  background: var(--color-paper);
+  background: var(--nx-paper);
 }
 
 /* A progress track that needs breathing room above it. */
@@ -346,14 +472,14 @@ body {
 .nx-card {
   position: relative;
   min-width: 0;
-  background-color: color-mix(in srgb, var(--color-ink-50) 72%, transparent);
+  background-color: color-mix(in srgb, var(--nx-ink-50) 72%, transparent);
   background-image: linear-gradient(
     168deg,
     rgba(255, 255, 255, 0.055) 0%,
     rgba(255, 255, 255, 0.018) 44%,
     rgba(0, 0, 0, 0.12) 100%
   );
-  border: 1px solid color-mix(in srgb, var(--color-ink-100) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nx-ink-100) 92%, transparent);
   border-radius: var(--nx-radius-lg);
   box-shadow: var(--nx-shadow-card);
   backdrop-filter: blur(12px);
@@ -376,8 +502,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(1000px 460px at 76% -10%, rgba(124, 156, 255, 0.16), transparent 60%),
-    radial-gradient(760px 420px at 2% 4%, rgba(95, 214, 196, 0.1), transparent 58%);
+    radial-gradient(1000px 460px at 76% -10%, var(--nx-glow-accent), transparent 60%),
+    radial-gradient(760px 420px at 2% 4%, var(--nx-glow-teal), transparent 58%);
 }
 
 .nx-orb {
@@ -423,58 +549,64 @@ body {
 }
 
 .nx-btn--primary {
-  background-image: linear-gradient(180deg, #8ea9ff 0%, #7c9cff 100%);
-  color: #0a1024;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5), 0 12px 30px -14px rgba(124, 156, 255, 0.8);
+  background-image: linear-gradient(180deg, var(--nx-btn-primary-from) 0%, var(--nx-btn-primary-to) 100%);
+  color: var(--nx-btn-primary-ink);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5), 0 12px 30px -14px var(--nx-btn-primary-shadow);
 }
 
 .nx-btn--primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5), 0 18px 40px -16px rgba(124, 156, 255, 0.95);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5), 0 18px 40px -16px var(--nx-btn-primary-shadow);
 }
 
 .nx-btn--accent {
-  background-image: linear-gradient(180deg, #ffffff 0%, #d9e2ff 100%);
-  color: #0a1024;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 14px 34px -14px rgba(124, 156, 255, 0.85);
+  background-image: linear-gradient(180deg, var(--nx-btn-accent-from) 0%, var(--nx-btn-accent-to) 100%);
+  color: var(--nx-btn-accent-ink);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 14px 34px -14px var(--nx-btn-accent-shadow);
 }
 
 .nx-btn--accent:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 20px 46px -16px rgba(124, 156, 255, 1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 20px 46px -16px var(--nx-btn-accent-shadow);
+}
+
+/* The brand mark: the brand gradient in both themes, with ink chosen to stay legible on it. */
+.nx-brandmark {
+  background-image: linear-gradient(135deg, var(--nx-brand-from) 0%, var(--nx-brand-to) 100%);
+  color: var(--nx-brand-ink);
 }
 
 .nx-btn--ghost {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: color-mix(in srgb, var(--color-ink-300) 55%, transparent);
-  color: var(--color-ink-800);
+  background: var(--nx-veil);
+  border-color: color-mix(in srgb, var(--nx-ink-300) 55%, transparent);
+  color: var(--nx-ink-800);
 }
 
 .nx-btn--ghost:hover:not(:disabled) {
   background: rgba(124, 156, 255, 0.14);
-  border-color: color-mix(in srgb, var(--color-accent-600) 60%, transparent);
-  color: var(--color-ink-900);
+  border-color: color-mix(in srgb, var(--nx-accent-600) 60%, transparent);
+  color: var(--nx-ink-900);
 }
 
 .nx-btn--quiet {
   background: transparent;
-  color: var(--color-ink-500);
+  color: var(--nx-ink-500);
   padding-inline: 0.625rem;
 }
 
 .nx-btn--quiet:hover:not(:disabled) {
-  color: var(--color-ink-900);
+  color: var(--nx-ink-900);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .nx-btn--danger {
-  background: var(--color-stop-50);
-  border-color: color-mix(in srgb, var(--color-stop-700) 30%, transparent);
-  color: var(--color-stop-700);
+  background: var(--nx-stop-50);
+  border-color: color-mix(in srgb, var(--nx-stop-700) 30%, transparent);
+  color: var(--nx-stop-700);
 }
 
 .nx-btn--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-stop-700) 18%, transparent);
+  background: color-mix(in srgb, var(--nx-stop-700) 18%, transparent);
 }
 
 .nx-btn--sm {
@@ -501,13 +633,13 @@ body {
 .nx-label {
   font-size: 0.82rem;
   font-weight: 500;
-  color: var(--color-ink-600);
+  color: var(--nx-ink-600);
 }
 
 .nx-help {
   font-size: 0.75rem;
   line-height: 1.55;
-  color: var(--color-ink-400);
+  color: var(--nx-ink-400);
 }
 
 .nx-input,
@@ -516,9 +648,9 @@ body {
   width: 100%;
   padding: 0.7rem 0.9rem;
   border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-ink-300) 45%, transparent);
-  background: rgba(11, 16, 32, 0.8);
-  color: var(--color-ink-900);
+  border: 1px solid color-mix(in srgb, var(--nx-ink-300) 45%, transparent);
+  background: var(--nx-field-bg);
+  color: var(--nx-ink-900);
   font-size: 0.95rem;
   font-family: inherit;
   line-height: 1.55;
@@ -527,22 +659,22 @@ body {
 
 .nx-input::placeholder,
 .nx-textarea::placeholder {
-  color: var(--color-ink-300);
+  color: var(--nx-ink-300);
 }
 
 .nx-input:hover,
 .nx-textarea:hover,
 .nx-select:hover {
-  border-color: color-mix(in srgb, var(--color-accent-600) 45%, transparent);
+  border-color: color-mix(in srgb, var(--nx-accent-600) 45%, transparent);
 }
 
 .nx-input:focus,
 .nx-textarea:focus,
 .nx-select:focus {
   outline: none;
-  border-color: var(--color-accent-600);
-  background: #0b1020;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-600) 32%, transparent);
+  border-color: var(--nx-accent-600);
+  background: var(--nx-field-focus-bg);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nx-accent-600) 32%, transparent);
 }
 
 .nx-textarea {
@@ -553,7 +685,7 @@ body {
 
 .nx-input[aria-invalid='true'],
 .nx-textarea[aria-invalid='true'] {
-  border-color: var(--color-stop-700);
+  border-color: var(--nx-stop-700);
 }
 
 /* ── Badges ───────────────────────────────────────────────────────────── */
@@ -567,34 +699,34 @@ body {
   font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  border: 1px solid color-mix(in srgb, var(--color-ink-300) 40%, transparent);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-ink-600);
+  border: 1px solid color-mix(in srgb, var(--nx-ink-300) 40%, transparent);
+  background: var(--nx-veil);
+  color: var(--nx-ink-600);
   white-space: nowrap;
 }
 
 .nx-badge--good {
-  background: var(--color-good-50);
-  border-color: color-mix(in srgb, var(--color-good-700) 40%, transparent);
-  color: var(--color-good-700);
+  background: var(--nx-good-50);
+  border-color: color-mix(in srgb, var(--nx-good-700) 40%, transparent);
+  color: var(--nx-good-700);
 }
 
 .nx-badge--warn {
-  background: var(--color-warn-50);
-  border-color: color-mix(in srgb, var(--color-warn-700) 42%, transparent);
-  color: var(--color-warn-700);
+  background: var(--nx-warn-50);
+  border-color: color-mix(in srgb, var(--nx-warn-700) 42%, transparent);
+  color: var(--nx-warn-700);
 }
 
 .nx-badge--stop {
-  background: var(--color-stop-50);
-  border-color: color-mix(in srgb, var(--color-stop-700) 40%, transparent);
-  color: var(--color-stop-700);
+  background: var(--nx-stop-50);
+  border-color: color-mix(in srgb, var(--nx-stop-700) 40%, transparent);
+  color: var(--nx-stop-700);
 }
 
 .nx-badge--accent {
-  background: var(--color-accent-50);
-  border-color: color-mix(in srgb, var(--color-accent-600) 45%, transparent);
-  color: var(--color-accent-700);
+  background: var(--nx-accent-50);
+  border-color: color-mix(in srgb, var(--nx-accent-600) 45%, transparent);
+  color: var(--nx-accent-700);
 }
 
 .nx-badge--dot::before {
@@ -610,23 +742,23 @@ body {
 .nx-track {
   height: 0.5rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--nx-track-fill);
   overflow: hidden;
 }
 
 .nx-track__fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-accent-600), var(--color-teal-700));
+  background: linear-gradient(90deg, var(--nx-accent-600), var(--nx-teal-700));
   transition: width 0.6s var(--ease);
 }
 
 .nx-track__fill--good {
-  background: linear-gradient(90deg, var(--color-teal-700), var(--color-accent-600));
+  background: linear-gradient(90deg, var(--nx-teal-700), var(--nx-accent-600));
 }
 
 .nx-track__fill--warn {
-  background: linear-gradient(90deg, var(--color-warn-700), var(--color-stop-700));
+  background: linear-gradient(90deg, var(--nx-warn-700), var(--nx-stop-700));
 }
 
 /* ── Stage rail ───────────────────────────────────────────────────────── */
@@ -644,19 +776,19 @@ body {
   padding: 0.4rem 0.5rem;
   border-radius: 8px;
   font-size: 0.8125rem;
-  color: var(--color-ink-500);
+  color: var(--nx-ink-500);
   text-decoration: none;
   transition: background 0.14s, color 0.14s;
 }
 
 .nx-rail__item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-ink-800);
+  background: var(--nx-veil);
+  color: var(--nx-ink-800);
 }
 
 .nx-rail__item[data-active='true'] {
   background: rgba(124, 156, 255, 0.14);
-  color: var(--color-accent-700);
+  color: var(--nx-accent-700);
   font-weight: 600;
 }
 
@@ -668,24 +800,24 @@ body {
   place-items: center;
   font-size: 0.6875rem;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--color-ink-500);
+  background: var(--nx-veil-strong);
+  color: var(--nx-ink-500);
   flex: none;
 }
 
 .nx-rail__item[data-status='complete'] .nx-rail__letter {
-  background: var(--color-good-50);
-  color: var(--color-good-700);
+  background: var(--nx-good-50);
+  color: var(--nx-good-700);
 }
 
 .nx-rail__item[data-status='skipped'] .nx-rail__letter {
-  background: var(--color-warn-50);
-  color: var(--color-warn-700);
+  background: var(--nx-warn-50);
+  color: var(--nx-warn-700);
 }
 
 .nx-rail__item[data-active='true'] .nx-rail__letter {
-  background: var(--color-accent-600);
-  color: #0a1024;
+  background: var(--nx-accent-600);
+  color: var(--nx-brand-ink);
 }
 
 /* ── Notices ──────────────────────────────────────────────────────────── */
@@ -693,44 +825,44 @@ body {
 .nx-notice {
   border-radius: var(--nx-radius);
   padding: 0.9rem 1.05rem;
-  border: 1px solid color-mix(in srgb, var(--color-ink-300) 38%, transparent);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid color-mix(in srgb, var(--nx-ink-300) 38%, transparent);
+  background: var(--nx-veil);
   font-size: 0.875rem;
   line-height: 1.6;
-  color: var(--color-ink-700);
+  color: var(--nx-ink-700);
 }
 
 .nx-notice--info {
-  background: var(--color-accent-50);
-  border-color: color-mix(in srgb, var(--color-accent-600) 36%, transparent);
-  color: var(--color-accent-700);
+  background: var(--nx-accent-50);
+  border-color: color-mix(in srgb, var(--nx-accent-600) 36%, transparent);
+  color: var(--nx-accent-700);
 }
 
 .nx-notice--warn {
-  background: var(--color-warn-50);
-  border-color: color-mix(in srgb, var(--color-warn-700) 34%, transparent);
-  color: var(--color-warn-700);
+  background: var(--nx-warn-50);
+  border-color: color-mix(in srgb, var(--nx-warn-700) 34%, transparent);
+  color: var(--nx-warn-700);
 }
 
 .nx-notice--stop {
-  background: var(--color-stop-50);
-  border-color: color-mix(in srgb, var(--color-stop-700) 34%, transparent);
-  color: var(--color-stop-700);
+  background: var(--nx-stop-50);
+  border-color: color-mix(in srgb, var(--nx-stop-700) 34%, transparent);
+  color: var(--nx-stop-700);
 }
 
 .nx-notice--good {
-  background: var(--color-good-50);
-  border-color: color-mix(in srgb, var(--color-good-700) 34%, transparent);
-  color: var(--color-good-700);
+  background: var(--nx-good-50);
+  border-color: color-mix(in srgb, var(--nx-good-700) 34%, transparent);
+  color: var(--nx-good-700);
 }
 
 /* ── Preview frame ────────────────────────────────────────────────────── */
 
 .nx-preview {
-  border: 1px solid color-mix(in srgb, var(--color-ink-300) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nx-ink-300) 32%, transparent);
   border-radius: var(--nx-radius-lg);
   overflow: hidden;
-  background: var(--color-paper);
+  background: var(--nx-paper);
   box-shadow: var(--nx-shadow-card);
 }
 
@@ -739,10 +871,10 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--color-ink-100);
-  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--nx-ink-100);
+  background: var(--nx-veil);
   font-size: 0.75rem;
-  color: var(--color-ink-400);
+  color: var(--nx-ink-400);
 }
 
 .nx-preview__frame {
@@ -760,9 +892,9 @@ body {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: rgba(7, 10, 18, 0.82);
+  background: var(--nx-scrim);
   backdrop-filter: saturate(180%) blur(16px);
-  border-top: 1px solid color-mix(in srgb, var(--color-ink-300) 26%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--nx-ink-300) 26%, transparent);
 }
 
 .nx-dock__inner {
@@ -782,18 +914,18 @@ body {
 }
 
 .nx-dock__dot--good {
-  background: var(--color-good-700);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-good-700) 22%, transparent);
+  background: var(--nx-good-700);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nx-good-700) 22%, transparent);
 }
 
 .nx-dock__dot--warn {
-  background: var(--color-warn-700);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn-700) 22%, transparent);
+  background: var(--nx-warn-700);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nx-warn-700) 22%, transparent);
 }
 
 .nx-dock__dot--stop {
-  background: var(--color-stop-700);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-stop-700) 22%, transparent);
+  background: var(--nx-stop-700);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nx-stop-700) 22%, transparent);
 }
 
 /* ── Tables ───────────────────────────────────────────────────────────── */
@@ -813,18 +945,18 @@ body {
   font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-ink-400);
+  color: var(--nx-ink-400);
   padding: 0.5rem 0.625rem;
-  border-bottom: 1px solid var(--color-ink-100);
+  border-bottom: 1px solid var(--nx-ink-100);
   white-space: nowrap;
   min-width: 0;
 }
 
 .nx-table td {
   padding: 0.7rem 0.625rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-ink-100) 60%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--nx-ink-100) 60%, transparent);
   vertical-align: top;
-  color: var(--color-ink-600);
+  color: var(--nx-ink-600);
   min-width: 0;
 }
 
@@ -848,16 +980,78 @@ body {
   }
 }
 
+/* A skeleton that reserves the shape of the content it stands in for. */
 .nx-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 25%,
-    rgba(255, 255, 255, 0.09) 50%,
-    rgba(255, 255, 255, 0.04) 75%
+    var(--nx-veil) 25%,
+    var(--nx-veil-strong) 50%,
+    var(--nx-veil) 75%
   );
   background-size: 800px 100%;
   animation: nx-shimmer 1.4s linear infinite;
   border-radius: 8px;
+}
+
+/* Visually hidden, still available to a screen reader. */
+.nx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ── Theme control ──────────────────────────────────────────────────────── */
+
+.nx-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 999px;
+  border: 1px solid var(--nx-ink-100);
+  background: var(--nx-veil);
+}
+
+.nx-theme-toggle__option {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--nx-ink-500);
+  font-size: 0.8125rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+
+.nx-theme-toggle__option:hover {
+  background: var(--nx-veil-strong);
+  color: var(--nx-ink-800);
+}
+
+.nx-theme-toggle__option[data-active='true'] {
+  background: var(--nx-ink-900);
+  color: var(--nx-paper);
+}
+
+.nx-theme-toggle[data-variant='panel'] {
+  border-color: var(--nx-ink-200);
+  background: var(--nx-ink-50);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-theme-toggle__option {
+    transition: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

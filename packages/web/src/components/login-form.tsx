@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PRODUCT_NAME } from '@nexora/core';
 import type { ActionableErrorShape } from '@nexora/core';
+import ThemeToggle from '@/components/theme-toggle';
 
 /**
  * Constrain the post-login destination to a path inside this application.
@@ -78,15 +79,18 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <span
               aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-accent-600 to-teal-700 text-[0.65rem] font-bold text-ink-950"
+              className="nx-brandmark grid h-8 w-8 place-items-center rounded-lg text-[0.65rem] font-bold"
             >
               NE
             </span>
             <span className="font-display text-[1.05rem] tracking-tight text-ink-900">{PRODUCT_NAME}</span>
           </Link>
-          <Link href="/signup" className="nx-btn nx-btn--ghost nx-btn--sm">
-            Create an account
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/signup" className="nx-btn nx-btn--ghost nx-btn--sm">
+              Create an account
+            </Link>
+          </div>
         </div>
       </header>
 

@@ -44,15 +44,31 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#070a12',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#070a12' },
+  ],
 };
+
+/**
+ * Apply the saved theme before the first paint.
+ *
+ * Without this the page renders in the default theme and then switches once the client script
+ * runs, which shows the person a flash of the wrong colours. The script reads the same stored
+ * choice the toggle writes, and falls back to the operating system's preference.
+ */
+const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('nexora-theme');var d=document.documentElement;var dark=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(s==='light'||s==='dark')?s:(dark?'dark':'light');d.setAttribute('data-theme',t);d.style.colorScheme=t;}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
       className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <a
           href="#main"
