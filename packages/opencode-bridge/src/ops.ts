@@ -142,7 +142,7 @@ async function httpJson<T>(
  */
 export async function verifyModel(
   model: ModelRef,
-  options: { timeoutMs?: number; operation?: string } = {},
+  options: { timeoutMs?: number; operation?: string; apiKey?: string | null } = {},
 ): Promise<{
   ok: boolean;
   model: ModelRef;
@@ -203,7 +203,7 @@ export async function verifyModel(
     const result = await runPrompt(
       model,
       'You are being tested as an AI provider for Nexora Entity. Reply with exactly the single token NEXORA_OK and nothing else.',
-      { timeoutMs: options.timeoutMs ?? config().opencodeProbeTimeoutMs, operation },
+      { timeoutMs: options.timeoutMs ?? config().opencodeProbeTimeoutMs, operation, apiKey: options.apiKey },
     );
     const text = result.text.trim();
     const ok = /NEXORA_OK/i.test(text);
@@ -245,11 +245,14 @@ export async function verifyModel(
 export async function runPrompt(
   model: ModelRef,
   prompt: string,
-  options: { timeoutMs?: number; operation?: string; system?: string } = {},
+  options: { timeoutMs?: number; operation?: string; system?: string; apiKey?: string | null } = {},
 ): Promise<AiCallResult> {
   const operation = options.operation ?? 'ai_operation';
   const timeoutMs = options.timeoutMs ?? config().opencodeRequestTimeoutMs;
   const started = Date.now();
+  // A key the person supplied for a provider that needs one travels with the request, and only
+  // with the request. It is never logged and never returned.
+  const keyHeaders: Record<string, string> = options.apiKey ? { 'x-nexora-provider-key': options.apiKey } : {};
 
   await ensureReady();
 
@@ -259,7 +262,7 @@ export async function runPrompt(
   if (isConsoleTransport()) {
     try {
       const workspace = await fetchConsoleConfig(30_000);
-      const headers = consoleProviderHeaders(workspace, model.providerId);
+      const headers = { ...consoleProviderHeaders(workspace, model.providerId), ...keyHeaders };
       const result = await runConsoleChat(model.modelId, prompt, {
         timeoutMs: timeoutMs,
         system: options.system,
@@ -287,7 +290,11 @@ export async function runPrompt(
   try {
     const created = await httpJson<{ id?: string }>(
       '/session',
-      { method: 'POST', body: JSON.stringify({ providerID: model.providerId, modelID: model.modelId }) },
+      {
+        method: 'POST',
+        headers: keyHeaders,
+        body: JSON.stringify({ providerID: model.providerId, modelID: model.modelId }),
+      },
       Math.min(timeoutMs, 20_000),
     );
     if (created.status >= 400 || !created.data?.id) {
@@ -307,6 +314,7 @@ export async function runPrompt(
       `/session/${encodeURIComponent(sessionId)}/message`,
       {
         method: 'POST',
+        headers: keyHeaders,
         body: JSON.stringify({ model: { providerID: model.providerId, modelID: model.modelId }, parts }),
       },
       timeoutMs,

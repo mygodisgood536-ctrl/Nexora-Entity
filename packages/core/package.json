@@ -16,6 +16,7 @@
     "./stages": "./src/stages.ts",
     "./primitives": "./src/primitives.ts",
     "./logging": "./src/logging.ts",
-    "./log-level": "./src/log-level.ts"
+    "./log-level": "./src/log-level.ts",
+    "./secrets": "./src/secrets.ts"
   }
 }

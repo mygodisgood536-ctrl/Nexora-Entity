@@ -96,6 +96,143 @@ export interface ConsoleConfig {
   providers?: Record<string, ConsoleConfigProvider>;
 }
 
+/* ── The model catalogue OpenCode itself uses ────────────────────────────── */
+
+/**
+ * Cost and capability metadata for a model, taken from the catalogue OpenCode lists its models
+ * from. It is the same source OpenCode itself consults, so a model priced here is priced the way
+ * OpenCode prices it — never from a name that merely looks like a free model.
+ */
+export interface ModelCostEntry {
+  id: string;
+  name: string;
+  cost: { input: number; output: number; cache_read?: number } | null;
+  contextWindow: number | null;
+  maxOutput: number | null;
+  reasoning: boolean;
+  toolCalls: boolean;
+  attachment: boolean;
+  modalities: { input: string[]; output: string[] };
+  isFree: boolean;
+}
+
+const COST_INDEX_TTL_MS = 15 * 60 * 1000;
+let costIndex: { at: number; byId: Map<string, ModelCostEntry> } | null = null;
+
+/**
+ * The catalogue OpenCode lists models from, indexed by model identifier.
+ *
+ * A model can be offered by several providers with different prices, so the cheapest entry wins:
+ * a model is free if *some* way of calling it is free.
+ */
+export async function modelCostMetadata(): Promise<Map<string, ModelCostEntry>> {
+  return modelCostIndex();
+}
+
+async function modelCostIndex(): Promise<Map<string, ModelCostEntry>> {
+  if (costIndex && Date.now() - costIndex.at < COST_INDEX_TTL_MS) return costIndex.byId;
+
+  const byId = new Map<string, ModelCostEntry>();
+  let payload: Record<string, { models?: Record<string, RawCostModel> }> = {};
+  try {
+    const res = await fetch('https://models.dev/api.json', {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`models.dev responded ${res.status}`);
+    payload = (await res.json()) as typeof payload;
+  } catch (err) {
+    log.warn('could not read the OpenCode model catalogue', {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    // An empty index is a valid state: it simply means no model can be shown as free, rather than
+    // a model being labelled free on a guess.
+    costIndex = { at: Date.now(), byId };
+    return byId;
+  }
+
+  for (const provider of Object.values(payload)) {
+    for (const [modelId, raw] of Object.entries(provider.models ?? {})) {
+      const entry: ModelCostEntry = {
+        id: raw.id ?? modelId,
+        name: raw.name ?? modelId,
+        cost:
+          raw.cost && typeof raw.cost.input === 'number' && typeof raw.cost.output === 'number'
+            ? { input: raw.cost.input, output: raw.cost.output, cache_read: raw.cost.cache_read }
+            : null,
+        contextWindow: raw.limit?.context ?? null,
+        maxOutput: raw.limit?.output ?? null,
+        reasoning: raw.reasoning === true,
+        toolCalls: raw.tool_call === true,
+        attachment: raw.attachment === true,
+        modalities: {
+          input: Object.entries(raw.modalities?.input ?? {}).filter(([, v]) => v === true).map(([k]) => k),
+          output: Object.entries(raw.modalities?.output ?? {}).filter(([, v]) => v === true).map(([k]) => k),
+        },
+        isFree:
+          raw.cost != null &&
+          typeof raw.cost.input === 'number' &&
+          typeof raw.cost.output === 'number' &&
+          raw.cost.input === 0 &&
+          raw.cost.output === 0,
+      };
+      const existing = byId.get(entry.id);
+      // The cheapest way of calling a model decides whether it is free.
+      if (!existing || (entry.cost && existing.cost && entry.cost.input < existing.cost.input)) {
+        byId.set(entry.id, entry);
+      }
+    }
+  }
+
+  costIndex = { at: Date.now(), byId };
+  return byId;
+}
+
+interface RawCostModel {
+  id?: string;
+  name?: string;
+  cost?: { input?: number; output?: number; cache_read?: number };
+  limit?: { context?: number; output?: number };
+  reasoning?: boolean;
+  tool_call?: boolean;
+  attachment?: boolean;
+  modalities?: { input?: Record<string, boolean>; output?: Record<string, boolean> };
+}
+
+/**
+ * The models the Console's inference gateway can actually serve right now.
+ *
+ * This is the authoritative answer to "what can be called", as opposed to the workspace
+ * configuration, which says what the workspace has chosen to expose.
+ */
+export async function fetchConsoleServedModels(timeoutMs = 30_000): Promise<string[]> {
+  const res = await fetch(`${inferenceBase()}/v1/models`, {
+    headers: { accept: 'application/json', ...authHeader() },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`OpenCode inference catalogue responded ${res.status}`);
+  const body = (await res.json()) as { data?: { id?: string }[] };
+  return (body.data ?? []).map((m) => String(m.id ?? '')).filter(Boolean);
+}
+
+/**
+ * The models that are free to use and need no additional provider key.
+ *
+ * A model qualifies when the bridge can serve it right now *and* the catalogue prices it at zero.
+ * Both facts come from OpenCode's own sources, so the list changes automatically as OpenCode
+ * changes it, and a model is never called free because of how it is named.
+ */
+export async function fetchConsoleFreeModels(timeoutMs = 30_000): Promise<ModelCostEntry[]> {
+  const [served, costs] = await Promise.all([fetchConsoleServedModels(timeoutMs), modelCostIndex()]);
+  const out: ModelCostEntry[] = [];
+  for (const id of served) {
+    const entry = costs.get(id);
+    if (entry && entry.isFree) out.push(entry);
+  }
+  out.sort((a, b) => (b.contextWindow ?? 0) - (a.contextWindow ?? 0) || a.name.localeCompare(b.name));
+  return out;
+}
+
 /** The Console workspace configuration: the live provider and model catalogue. */
 export async function fetchConsoleConfig(timeoutMs = 30_000): Promise<ConsoleConfig> {
   const url = `${consoleBase()}/api/v2/config`;

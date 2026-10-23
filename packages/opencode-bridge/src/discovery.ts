@@ -8,7 +8,7 @@
 
 import { createLogger } from '@nexora/core';
 import { ensureReady, getVersionString, health } from './server';
-import { fetchConsoleConfig, isConsoleTransport } from './console';
+import { fetchConsoleConfig, fetchConsoleFreeModels, fetchConsoleServedModels, isConsoleTransport, modelCostMetadata } from './console';
 
 const log = createLogger('opencode:discovery');
 
@@ -59,6 +59,22 @@ export interface ProviderCatalogue {
   fetchedAt: string;
   durationMs: number;
   providers: DiscoveredProvider[];
+  /**
+   * Models that are free to use and need no additional provider key.
+   *
+   * The platform's own bridge credential is already held server-side, so a model in this list can
+   * be used without the person supplying another provider's key. The list is read live from
+   * OpenCode and from the catalogue OpenCode itself prices its models from, so it changes on its
+   * own when OpenCode changes.
+   */
+  freeModels: {
+    id: string;
+    name: string;
+    providerId: string;
+    providerName: string;
+    contextWindow: number | null;
+    reasoning: boolean;
+  }[];
   totals: {
     providers: number;
     connectedProviders: number;
@@ -280,6 +296,23 @@ export async function fetchCatalogue(options: { includeAllProviders?: boolean } 
     fetchedAt: new Date().toISOString(),
     durationMs: Date.now() - started,
     providers: filtered,
+    // A model served by a provider that needs no credentials of its own is free to use: the
+    // platform's bridge credential is the only thing involved. The list is read from OpenCode, so
+    // it changes on its own when OpenCode changes.
+    freeModels: filtered
+      .filter((p) => p.connected && p.credentialRequirement === 'none')
+      .flatMap((p) =>
+        p.models
+          .filter((m) => m.isFree)
+          .map((m) => ({
+            id: m.id,
+            name: m.name,
+            providerId: p.id,
+            providerName: p.name,
+            contextWindow: m.contextWindow,
+            reasoning: m.reasoning,
+          })),
+      ),
     totals: {
       providers: filtered.length,
       connectedProviders: filtered.filter((p) => p.connected).length,
@@ -357,6 +390,47 @@ async function fetchConsoleCatalogue(
     });
   }
 
+  const freeModels = await fetchConsoleFreeModels(30_000);
+
+  // The provider the Console itself exposes. Its model list is everything the inference gateway can
+  // serve, priced from the catalogue OpenCode uses, so the models offered here are the models
+  // that can actually be called.
+  const consoleProviderId = 'opencode';
+  const consoleProvider = providers.find((p) => p.id === consoleProviderId) ?? providers[0];
+  if (consoleProvider) {
+    const served = await fetchConsoleServedModels(30_000).catch(() => [] as string[]);
+    const costs = await modelCostMetadata();
+    const enriched: DiscoveredModel[] = [];
+    for (const modelId of served) {
+      const meta = costs.get(modelId);
+      const mapped = mapModel(modelId, {
+        id: modelId,
+        name: meta?.name ?? modelId,
+        capabilities: {
+          input: Object.fromEntries((meta?.modalities.input ?? ['text']).map((m) => [m, true])),
+          output: Object.fromEntries((meta?.modalities.output ?? ['text']).map((m) => [m, true])),
+          reasoning: meta?.reasoning === true,
+          toolcall: meta?.toolCalls === true,
+          attachment: meta?.attachment === true,
+        },
+        cost: meta?.cost ?? undefined,
+        limit: {
+          context: meta?.contextWindow ?? undefined,
+          output: meta?.maxOutput ?? undefined,
+        },
+      });
+      if (!isUsableForNexora(mapped)) continue;
+      enriched.push(mapped);
+    }
+    enriched.sort((a, b) => {
+      if (a.isFree !== b.isFree) return a.isFree ? -1 : 1;
+      return (b.contextWindow ?? 0) - (a.contextWindow ?? 0);
+    });
+    consoleProvider.models = enriched;
+    consoleProvider.modelCount = enriched.length;
+    consoleProvider.defaultModelId = enriched.find((m) => m.isFree)?.id ?? enriched[0]?.id ?? null;
+  }
+
   providers.sort((a, b) => {
     if (a.connected !== b.connected) return a.connected ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -370,6 +444,7 @@ async function fetchConsoleCatalogue(
     providers: filtered.length,
     connectedProviders: filtered.filter((p) => p.connected).length,
     usableModels: filtered.reduce((n, p) => n + p.models.length, 0),
+    freeModels: freeModels.length,
   });
 
   return {
@@ -377,11 +452,19 @@ async function fetchConsoleCatalogue(
     fetchedAt: new Date().toISOString(),
     durationMs: Date.now() - started,
     providers: filtered,
+    freeModels: freeModels.map((m) => ({
+      id: m.id,
+      name: m.name,
+      providerId: consoleProvider?.id ?? consoleProviderId,
+      providerName: consoleProvider?.name ?? 'OpenCode',
+      contextWindow: m.contextWindow,
+      reasoning: m.reasoning,
+    })),
     totals: {
       providers: filtered.length,
       connectedProviders: filtered.filter((p) => p.connected).length,
       usableModels: filtered.reduce((n, p) => n + p.models.length, 0),
-      freeModels: filtered.reduce((n, p) => n + p.models.filter((m) => m.isFree).length, 0),
+      freeModels: freeModels.length,
     },
   };
 }

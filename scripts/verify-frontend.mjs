@@ -165,7 +165,9 @@ async function auditScreen(page, url, label) {
       h1: (document.querySelector('h1')?.textContent || '').trim().slice(0, 60),
     };
   });
-  return r;
+  // The screen's name travels with its result, so a failure says which screen failed rather than
+  // leaving the reader to work it out from a URL.
+  return { ...r, screen: label };
 }
 
 (async () => {
@@ -197,10 +199,11 @@ async function auditScreen(page, url, label) {
     ['review', `/app/review?entity=${entityId}`],
     ['publish', `/app/publish?entity=${entityId}`],
     ['settings', '/app/settings'],
+    ['ai-settings', '/app/settings/ai'],
   ];
 
   for (const theme of ['light', 'dark']) {
-    await page.addInitScript((t) => { try { localStorage.setItem('nexora-theme', t); } catch (e) {} }, theme);
+    await page.addInitScript((t) => { try { localStorage.setItem('nexora-theme', t); } catch (_e) {} }, theme);
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       for (const [label, url] of screens) {

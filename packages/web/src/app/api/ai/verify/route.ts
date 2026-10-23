@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { config } from '@nexora/core/config';
 import { toActionableError, UserDataError } from '@nexora/core';
 import {
+  getActiveAiConfiguration,
   logAiAttempt,
   markAiConfigurationFailed,
   resolveSession,
@@ -17,6 +18,14 @@ export const dynamic = 'force-dynamic';
 const schema = z.object({
   providerId: z.string().min(1).max(120),
   modelId: z.string().min(1).max(200),
+  /**
+   * A key the person supplied for a provider that needs one.
+   *
+   * It is used for this test and for that provider's calls afterwards, and it is stored on the
+   * account's configuration rather than in the browser. It is never returned by any endpoint and
+   * never written to a log.
+   */
+  apiKey: z.string().min(1).max(500).optional(),
 });
 
 /**
@@ -59,7 +68,16 @@ export async function POST(request: Request) {
     modelName: model.name,
   };
 
-  const result = await verifyModel(ref, { operation: 'account_configuration' });
+  // A key the person supplied is encrypted before it is stored and is never returned by an
+  // endpoint. An existing key is reused unless a new one is supplied, so re-verifying the same
+  // model does not silently discard the credential.
+  const { encryptSecret, decryptSecret } = await import('@nexora/core/secrets');
+  const storedVerification = (await getActiveAiConfiguration(user.id))?.verification ?? {};
+  const existingKey =
+    typeof storedVerification['providerKey'] === 'string' ? decryptSecret(storedVerification['providerKey']) : null;
+  const apiKey = parsed.data.apiKey ?? existingKey;
+
+  const result = await verifyModel(ref, { operation: 'account_configuration', apiKey });
 
   await logAiAttempt({
     userId: user.id,
@@ -94,6 +112,9 @@ export async function POST(request: Request) {
       latencyMs: result.latencyMs,
       opencodeVersion: catalogue.opencodeVersion,
       verifiedAt: new Date().toISOString(),
+      // The encrypted key travels with the configuration so later calls can use it. It is never
+      // returned to the browser.
+      ...(apiKey ? { providerKey: encryptSecret(apiKey) } : {}),
     },
   });
 

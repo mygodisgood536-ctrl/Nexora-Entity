@@ -24,6 +24,9 @@ export default tseslint.config(
       '**/*.d.ts',
       '.next/**',
       'out/**',
+      // Scratch probes written at the repository root during an investigation. They are not part
+      // of the product and must never be able to fail a lint run.
+      'tmp-*',
     ],
   },
   js.configs.recommended,
@@ -90,7 +93,7 @@ export default tseslint.config(
     // Scripts that drive a browser from Node. Functions passed to `page.evaluate(...)` are
     // serialised and run inside the page, so they legitimately touch `document`,
     // `getComputedStyle` and friends from a Node file. Both sets are therefore declared here.
-    files: ['scripts/ui-audit.mjs', 'scripts/design-audit.mjs'],
+    files: ['scripts/ui-audit.mjs', 'scripts/design-audit.mjs', 'scripts/verify-*.mjs'],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
     },
