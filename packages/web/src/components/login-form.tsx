@@ -74,7 +74,13 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
 
   return (
     <main id="main" className="flex min-h-screen flex-col">
-      <header className="border-b border-ink-100">
+      {/* Cinematic atmospheric background */}
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-backdrop" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-gradient" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-grid" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-glow" />
+
+      <header className="border-b border-ink-100/50">
         <div className="nx-shell nx-shell--narrow flex items-center justify-between py-4">
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <span
@@ -94,10 +100,11 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
         </div>
       </header>
 
-      <div className="nx-shell nx-shell--narrow flex flex-1 items-start justify-center py-12 md:py-20">
-        <div className="w-full max-w-md">
-          <p className="nx-eyebrow">Step 2 of 2</p>
-          <h1 className="nx-title">Sign In</h1>
+<div className="nx-shell nx-shell--narrow flex flex-1 items-start justify-center py-12 md:py-20">
+            <div className="w-full max-w-md">
+              <div className="nx-auth-card nx-card nx-card--pad nx-stack">
+                <p className="nx-eyebrow">Step 2 of 2</p>
+                <h1 className="nx-title">Sign In</h1>
           <p className="nx-subtitle mb-6">
             Enter your username, the exact security question you chose when you signed up, and your security answer.
           </p>
@@ -176,6 +183,7 @@ export function LoginForm({ next: requestedNext, justRegistered }: Props) {
           </p>
         </div>
       </div>
+    </div>
     </main>
   );
 }

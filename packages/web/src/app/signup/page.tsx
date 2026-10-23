@@ -70,7 +70,13 @@ export default function SignupForm() {
 
   return (
     <main id="main" className="flex min-h-screen flex-col">
-      <header className="border-b border-ink-100">
+      {/* Cinematic atmospheric background */}
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-backdrop" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-gradient" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-grid" />
+      <div aria-hidden="true" className="fixed inset-0 -z-10 nx-auth-glow" />
+
+      <header className="border-b border-ink-100/50">
         <div className="nx-shell nx-shell--narrow flex items-center justify-between py-4">
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <span
@@ -92,7 +98,7 @@ export default function SignupForm() {
 
       <div className="nx-shell nx-shell--narrow flex-1 py-10 md:py-16">
         <div className="grid gap-8 md:grid-cols-[1fr_0.85fr]">
-          <div>
+          <div className="nx-auth-card nx-card nx-card--pad nx-stack">
             <p className="nx-eyebrow">Step 1 of 2</p>
             <h1 className="nx-title">Create Your Account</h1>
             <p className="nx-subtitle mb-6">

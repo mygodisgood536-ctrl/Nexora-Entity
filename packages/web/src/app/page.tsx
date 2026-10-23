@@ -6,7 +6,7 @@ import ThemeToggle from '@/components/theme-toggle';
 export default function HomePage() {
   return (
     <main id="main" className="min-h-screen">
-      <header className="border-b border-ink-100">
+      <header className="border-b border-ink-100/50">
         <div className="nx-shell flex flex-wrap items-center justify-between gap-3 py-4">
           <div className="flex items-center gap-2.5">
             <span
@@ -29,27 +29,42 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden" aria-labelledby="hero-heading">
+        {/* Atmospheric background layers */}
         <div
           aria-hidden="true"
-          className="nx-grid-backdrop"
+          className="absolute inset-0 -z-10 nx-hero-backdrop"
         />
-        <div aria-hidden="true" className="nx-hero-glow" />
-        <div className="nx-shell relative grid gap-12 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-center md:py-24">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 nx-hero-gradient"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 nx-hero-grid"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 nx-hero-glow"
+        />
+
+        <div className="relative nx-shell grid gap-12 py-16 md:grid-cols-[1.15fr_0.85fr] md:items-center md:py-28 lg:py-32">
           <div className="nx-stack nx-stack--loose">
             <p className="nx-eyebrow">Digital identity, made coherent</p>
-            <h1 className="nx-display">{PRODUCT_TAGLINE}</h1>
-            <p className="nx-subtitle">
+            <h1 id="hero-heading" className="nx-display">
+              {PRODUCT_TAGLINE}
+            </h1>
+            <p className="nx-subtitle max-w-[58ch]">
               Nexora Entity collects the information you supply, examines the public and authorised sources you connect,
               resolves legitimate name variations, keeps provenance and evidence for every fact, detects contradictions and
               ambiguity, and refuses to publish until the whole entity passes a complete second-pass review. Only then does
               it compose a beautiful public Entity Website from its pre-designed design system.
             </p>
             <div className="nx-row mt-2">
-              <Link href="/signup" className="nx-btn nx-btn--accent">
+              <Link href="/signup" className="nx-btn nx-btn--accent nx-btn--lg">
                 Build your entity
               </Link>
-              <a href="#how" className="nx-btn nx-btn--ghost">
+              <a href="#how" className="nx-btn nx-btn--ghost nx-btn--lg">
                 How it works
               </a>
             </div>
@@ -57,53 +72,82 @@ export default function HomePage() {
               Account creation asks for four things only: your full name, a username, a security question and a security
               answer. You are never asked technical questions the platform can answer itself.
             </p>
+
+            {/* Trust signals */}
+            <div className="nx-row mt-8 gap-6 text-sm text-ink-400 flex-wrap">
+              <span className="nx-row items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500" aria-hidden="true" />
+                No email, no password
+              </span>
+              <span className="nx-row items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500" aria-hidden="true" />
+                AI is intrinsic
+              </span>
+              <span className="nx-row items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500" aria-hidden="true" />
+                100% = published
+              </span>
+            </div>
           </div>
 
-          <div className="nx-card nx-card--pad nx-stack">
-            <p className="nx-eyebrow">What 100% actually means</p>
-            <p className="nx-metric nx-metric--sm">
-              Complete and internally coherent against the Nexora Entity Readiness Standard.
-            </p>
-            <ul className="nx-stack-sm nx-list">
-              {[
-                'Every fact keeps where it came from, when it was checked, and how it was verified.',
-                'What you tell us stays labelled as yours. What an inspected source says stays labelled as the source’s.',
-                'Similar names are never treated as proof that two profiles are the same person.',
-                'Four pages copying one press release count once, not four.',
-                'Any blocking issue stops publication. Nothing is published at 99%.',
-              ].map((line) => (
-                <li key={line} className="nx-row items-start gap-2 text-sm leading-relaxed text-ink-600">
-                  <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-accent-600" />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="relative">
+            <div className="nx-card nx-card--pad nx-stack nx-hero-card">
+              <p className="nx-eyebrow">What 100% actually means</p>
+              <p className="nx-metric nx-metric--sm">
+                Complete and internally coherent against the Nexora Entity Readiness Standard.
+              </p>
+              <ul className="nx-stack-sm nx-list">
+                {[
+                  'Every fact keeps where it came from, when it was checked, and how it was verified.',
+                  'What you tell us stays labelled as yours. What an inspected source says stays labelled as the source&rsquo;s.',
+                  'Similar names are never treated as proof that two profiles are the same person.',
+                  'Four pages copying one press release count once, not four.',
+                  'Any blocking issue stops publication. Nothing is published at 99%.',
+                ].map((line) => (
+                  <li key={line} className="nx-row items-start gap-2 text-sm leading-relaxed text-ink-600">
+                    <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-accent-600" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Live preview hint */}
+            <div className="mt-4 p-3 rounded-lg bg-ink-50/80 border border-ink-100/50 nx-stack-sm">
+              <p className="nx-eyebrow">Live preview throughout</p>
+              <p className="text-sm leading-relaxed text-ink-600">
+                As you complete stages, your public Entity Website preview updates in real time — the same pre-designed
+                system that will be deployed at 100%.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="how" className="border-t border-ink-100 bg-ink-50/50">
-        <div className="nx-shell py-16 md:py-20">
-          <h2 className="nx-title">The Guided Flow</h2>
-          <p className="nx-subtitle">
-            You move through clear stages. The difficult research, cross-checking, identity resolution, source analysis and
-            technical work happen behind the scenes.
-          </p>
-          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section id="how" className="border-t border-ink-100/50 bg-ink-50/30">
+        <div className="nx-shell py-16 md:py-20 lg:py-24">
+          <div className="nx-stack nx-stack--loose max-w-2xl mx-auto text-center">
+            <h2 className="nx-title">The Guided Flow</h2>
+            <p className="nx-subtitle">
+              You move through clear stages. The difficult research, cross-checking, identity resolution, source analysis and
+              technical work happen behind the scenes.
+            </p>
+          </div>
+          <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               ['Create your account', 'Four fields, no jargon.'],
-              ['Create an entity', 'The AI provider and model panel opens immediately — AI is intrinsic, so there is no “do you want to use AI?” question.'],
+              ['Create an entity', 'The AI provider and model panel opens immediately — AI is intrinsic, so there is no &ldquo;do you want to use AI?&rdquo; question.'],
               ['Choose and verify a provider', 'Availability comes live from OpenCode. A model is only accepted after a real test call succeeds.'],
-              ['Fill the stages you want', 'Skip anything for now. A skip is not a satisfaction — the platform tells you later if something skipped turned out to matter.'],
+              ['Fill the stages you want', 'Skip anything for now. A skip is not a satisfaction &mdash; the platform tells you later if something skipped turned out to matter.'],
               ['Let Nexora Entity investigate', 'Sources are fetched for real, identity is resolved across multiple signals, and provenance is recorded.'],
               ['Resolve only what needs you', 'Discovered information, contradictions and ambiguities appear in one review queue.'],
               ['Pass the whole-entity review', 'A complete second pass re-examines everything, not just the field you corrected.'],
               ['Publish', 'At 100% Entity Readiness, the public Entity Website is generated, validated and deployed.'],
             ].map(([title, body], i) => (
-              <li key={title} className="nx-card nx-card--pad">
+              <li key={title} className="nx-card nx-card--pad group">
                 <div className="nx-row mb-1 gap-2">
                   <span className="nx-rail__letter">{i + 1}</span>
-                  <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
+                  <h3 className="text-sm font-semibold text-ink-900 group-hover:text-accent-700 transition-colors">{title}</h3>
                 </div>
                 <p className="text-sm leading-relaxed text-ink-500">{body}</p>
               </li>
@@ -112,21 +156,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-ink-100">
-        <div className="nx-shell grid gap-8 py-16 md:grid-cols-2 md:py-20">
+      <section className="border-t border-ink-100/50">
+        <div className="nx-shell grid gap-8 py-16 md:grid-cols-2 md:py-20 lg:py-24">
           <div className="nx-stack">
             <h2 className="nx-title">About Search Engines, Honestly</h2>
             <p className="text-sm leading-relaxed text-ink-600">
-              Nexora Entity is designed to make a person’s online identity more coherent, connected, attributable and
+              Nexora Entity is designed to make a person&rsquo;s online identity more coherent, connected, attributable and
               understandable to search engines. It publishes one clear canonical identity page, accurate Person and
               ProfilePage structured data, legitimate alternate names, accurate sameAs relationships, crawlable images,
               stable URLs and identifiers, and internal links between the person and their work.
             </p>
             <p className="text-sm leading-relaxed text-ink-600">
               Google independently decides what information appears in Search and how its Knowledge Graph and Knowledge
-              Panels are created or updated. Nexora Entity has no access to, and makes no claim about, Google’s private
-              internal Knowledge Graph state. “Verified” in Nexora Entity always means verified against Nexora Entity’s own
-              Entity Readiness Standard — never verification, approval or endorsement by a search engine.
+              Panels are created or updated. Nexora Entity has no access to, and makes no claim about, Google&rsquo;s private
+              internal Knowledge Graph state. &ldquo;Verified&rdquo; in Nexora Entity always means verified against Nexora Entity&rsquo;s own
+              Entity Readiness Standard &mdash; never verification, approval or endorsement by a search engine.
             </p>
           </div>
           <div className="nx-stack">
@@ -136,7 +180,7 @@ export default function HomePage() {
               live websites, four qualifying press releases, and four qualifying photographs.
             </p>
             <p className="text-sm leading-relaxed text-ink-600">
-              These are Nexora Entity’s own requirements. They are not requirements imposed by Google or any other search
+              These are Nexora Entity&rsquo;s own requirements. They are not requirements imposed by Google or any other search
               engine. Quality is checked, not just counted: dead links, unrelated pages, duplicates and copies of the same
               source do not satisfy them.
             </p>
@@ -152,15 +196,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-ink-100 bg-ink-50/50">
+      <footer className="border-t border-ink-100/50 bg-ink-50/30">
         <div className="nx-shell flex flex-wrap items-center justify-between gap-4 py-8 text-xs text-ink-400">
           <span>
-            {PRODUCT_NAME} — {PRODUCT_TAGLINE}
+            {PRODUCT_NAME} &mdash; {PRODUCT_TAGLINE}
           </span>
           <div className="flex flex-wrap gap-1 sm:gap-4">
-            {/* These are text links inside small print, which measured 16px tall and were too
-                small to tap reliably on a phone. Negative inline margin keeps the visual rhythm
-                of the gap-4 container while the padding gives the link a real touch target. */}
             <Link href="/login" className="-mx-1 rounded px-1 py-2 hover:text-ink-700">
               Sign in
             </Link>

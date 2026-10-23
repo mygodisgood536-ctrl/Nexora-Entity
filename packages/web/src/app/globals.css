@@ -508,6 +508,132 @@ body {
     radial-gradient(760px 420px at 2% 4%, var(--nx-glow-teal), transparent 58%);
 }
 
+/* Cinematic hero background layers — reference site visual language. */
+.nx-hero-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -20;
+  background:
+    radial-gradient(ellipse 120% 80% at 85% 15%, var(--nx-glow-accent), transparent 65%),
+    radial-gradient(ellipse 90% 70% at 10% 85%, var(--nx-glow-teal), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 50% 50%, color-mix(in srgb, var(--nx-accent-500) 8%, transparent), transparent 70%);
+}
+
+.nx-hero-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -15;
+  background-image: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--nx-accent-50) 60%, transparent) 0%,
+    transparent 45%,
+    color-mix(in srgb, var(--nx-teal-50) 60%, transparent) 100%
+  );
+  opacity: 0.7;
+}
+
+.nx-hero-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -10;
+  background-image:
+    linear-gradient(90deg, rgba(150, 168, 205, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(150, 168, 205, 0.035) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 120% 80% at 50% 30%, black 40%, transparent 80%);
+}
+
+/* Hero card with subtle inner glow and elevated presence. */
+.nx-hero-card {
+  position: relative;
+  background-image:
+    linear-gradient(
+      168deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.025) 44%,
+      rgba(0, 0, 0, 0.14) 100%
+    ),
+    radial-gradient(ellipse 120% 100% at 50% -20%, color-mix(in srgb, var(--nx-accent-500) 10%, transparent), transparent 70%);
+  box-shadow:
+    var(--nx-shadow-card),
+    inset 0 1px rgba(255, 255, 255, 0.12),
+    0 0 0 1px color-mix(in srgb, var(--nx-accent-500) 12%, transparent);
+}
+
+/* Large accent button variant for hero CTAs. */
+.nx-btn--lg {
+  padding: 0.85rem 1.7rem;
+  font-size: 1rem;
+}
+
+/* Auth page cinematic background layers. */
+.nx-auth-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -20;
+  background:
+    radial-gradient(ellipse 140% 90% at 80% 20%, var(--nx-glow-accent), transparent 65%),
+    radial-gradient(ellipse 100% 80% at 15% 80%, var(--nx-glow-teal), transparent 55%),
+    radial-gradient(ellipse 70% 70% at 50% 50%, color-mix(in srgb, var(--nx-accent-500) 6%, transparent), transparent 75%);
+}
+
+.nx-auth-gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -15;
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--nx-accent-50) 50%, transparent) 0%,
+    transparent 50%,
+    color-mix(in srgb, var(--nx-teal-50) 50%, transparent) 100%
+  );
+  opacity: 0.6;
+}
+
+.nx-auth-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -10;
+  background-image:
+    linear-gradient(90deg, rgba(150, 168, 205, 0.025) 1px, transparent 1px),
+    linear-gradient(rgba(150, 168, 205, 0.025) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(ellipse 140% 90% at 50% 30%, black 35%, transparent 85%);
+}
+
+.nx-auth-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -5;
+  background:
+    radial-gradient(800px 400px at 85% 10%, color-mix(in srgb, var(--nx-accent-500) 12%, transparent), transparent 65%),
+    radial-gradient(600px 340px at 15% 90%, color-mix(in srgb, var(--nx-teal-500) 10%, transparent), transparent 60%);
+}
+
+/* Ensure auth form card feels elevated in the cinematic space. */
+.nx-auth-card {
+  position: relative;
+  background-image:
+    linear-gradient(
+      168deg,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.03) 44%,
+      rgba(0, 0, 0, 0.15) 100%
+    ),
+    radial-gradient(ellipse 140% 120% at 50% -30%, color-mix(in srgb, var(--nx-accent-500) 12%, transparent), transparent 70%);
+  box-shadow:
+    var(--nx-shadow-card),
+    inset 0 1px rgba(255, 255, 255, 0.14),
+    0 0 0 1px color-mix(in srgb, var(--nx-accent-500) 15%, transparent);
+}
+
 .nx-orb {
   position: absolute;
   border-radius: 9999px;
